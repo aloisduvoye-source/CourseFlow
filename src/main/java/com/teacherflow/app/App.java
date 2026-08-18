@@ -6,10 +6,18 @@ import com.teacherflow.ui.CoursGestionPane;
 import com.teacherflow.ui.EmploiDuTempsPane;
 import com.teacherflow.ui.Styles;
 import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
+import javafx.scene.control.Label;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -23,27 +31,59 @@ public class App extends Application {
     public void start(Stage stage) {
         emploiDuTemps = chargerDonnees();
 
-        CoursGestionPane ongletCours = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
-        EmploiDuTempsPane ongletEmploiDuTemps = new EmploiDuTempsPane(emploiDuTemps, this::sauvegarder);
+        CoursGestionPane vueCours = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
+        EmploiDuTempsPane vueEmploiDuTemps = new EmploiDuTempsPane(emploiDuTemps, this::sauvegarder);
 
-        Tab tabCours = new Tab("Cours", ongletCours);
-        tabCours.setClosable(false);
-        Tab tabEmploiDuTemps = new Tab("Emploi du temps", ongletEmploiDuTemps);
-        tabEmploiDuTemps.setClosable(false);
+        vueEmploiDuTemps.setVisible(false);
+        vueEmploiDuTemps.setManaged(false);
+        StackPane contenu = new StackPane(vueCours, vueEmploiDuTemps);
 
-        TabPane onglets = new TabPane(tabCours, tabEmploiDuTemps);
-        onglets.getSelectionModel().selectedItemProperty().addListener((obs, ancien, nouveau) -> {
-            if (nouveau == tabEmploiDuTemps) {
-                ongletEmploiDuTemps.rafraichir();
-            }
+        ToggleGroup groupeNavigation = new ToggleGroup();
+        ToggleButton boutonCours = new ToggleButton("Cours");
+        boutonCours.setToggleGroup(groupeNavigation);
+        boutonCours.setSelected(true);
+        boutonCours.getStyleClass().add("nav-bouton");
+        boutonCours.setMaxWidth(Double.MAX_VALUE);
+
+        ToggleButton boutonEmploiDuTemps = new ToggleButton("Emploi du temps");
+        boutonEmploiDuTemps.setToggleGroup(groupeNavigation);
+        boutonEmploiDuTemps.getStyleClass().add("nav-bouton");
+        boutonEmploiDuTemps.setMaxWidth(Double.MAX_VALUE);
+
+        boutonCours.setOnAction(e -> afficherVue(vueCours, vueEmploiDuTemps));
+        boutonEmploiDuTemps.setOnAction(e -> {
+            afficherVue(vueEmploiDuTemps, vueCours);
+            vueEmploiDuTemps.rafraichir();
         });
 
-        Scene scene = new Scene(onglets, 1000, 700);
+        Label titreApp = new Label("TeacherFlow");
+        titreApp.getStyleClass().add("titre-app");
+
+        Region espaceur = new Region();
+        VBox.setVgrow(espaceur, Priority.ALWAYS);
+
+        VBox barreLaterale = new VBox(4, titreApp, boutonCours, boutonEmploiDuTemps);
+        barreLaterale.getStyleClass().add("barre-laterale");
+        barreLaterale.setPadding(new Insets(16, 8, 16, 8));
+        barreLaterale.setPrefWidth(190);
+
+        BorderPane racine = new BorderPane();
+        racine.setLeft(barreLaterale);
+        racine.setCenter(contenu);
+
+        Scene scene = new Scene(racine, 1050, 700);
         Styles.appliquer(scene);
         stage.setScene(scene);
         stage.setTitle("TeacherFlow");
         stage.setOnCloseRequest(e -> sauvegarder());
         stage.show();
+    }
+
+    private void afficherVue(Node aAfficher, Node aCacher) {
+        aCacher.setVisible(false);
+        aCacher.setManaged(false);
+        aAfficher.setVisible(true);
+        aAfficher.setManaged(true);
     }
 
     private EmploiDuTemps chargerDonnees() {

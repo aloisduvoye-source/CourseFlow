@@ -21,34 +21,35 @@
     -fx-text-fill: -fx-warm-text;
 }
 
-/* --- Onglets --- */
-.tab-pane .tab-header-background {
-    -fx-background-color: -fx-warm-bg;
+/* --- Barre de navigation verticale --- */
+.barre-laterale {
+    -fx-background-color: -fx-warm-panel;
+    -fx-border-color: -fx-warm-border;
+    -fx-border-width: 0 1 0 0;
 }
-.tab-pane .tab-header-area {
-    -fx-padding: 10 0 0 12;
+.titre-app {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-warm-accent-dark;
+    -fx-padding: 4 8 16 8;
 }
-.tab-pane .tab {
+.nav-bouton {
     -fx-background-color: transparent;
-    -fx-background-radius: 10 10 0 0;
-    -fx-padding: 9 22;
-}
-.tab-pane .tab:hover {
-    -fx-background-color: derive(-fx-warm-accent, 88%);
-}
-.tab-pane .tab:selected {
-    -fx-background-color: -fx-warm-accent;
-}
-.tab-pane .tab .tab-label {
+    -fx-border-color: transparent;
     -fx-text-fill: -fx-warm-text;
+    -fx-background-radius: 8;
+    -fx-padding: 10 12;
+    -fx-alignment: CENTER_LEFT;
     -fx-font-size: 13px;
+    -fx-cursor: hand;
 }
-.tab-pane .tab:selected .tab-label {
+.nav-bouton:hover {
+    -fx-background-color: derive(-fx-warm-accent, 90%);
+}
+.nav-bouton:selected {
+    -fx-background-color: -fx-warm-accent;
     -fx-text-fill: white;
     -fx-font-weight: bold;
-}
-.tab-pane .tab-content-area {
-    -fx-background-color: -fx-warm-bg;
 }
 
 /* --- Boutons --- */
