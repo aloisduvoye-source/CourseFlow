@@ -33,6 +33,7 @@ import javafx.scene.layout.VBox;
 import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -81,7 +82,7 @@ public class EmploiDuTempsPane extends BorderPane {
         this.emploiDuTemps = emploiDuTemps;
         this.surChangement = surChangement;
 
-        setPadding(new Insets(12));
+        setPadding(new Insets(16));
 
         defilement.setContent(ligneColonnes);
         defilement.setFitToWidth(false);
@@ -100,7 +101,7 @@ public class EmploiDuTempsPane extends BorderPane {
             Label enTete = new Label(nomJour(jour));
             enTete.setPrefWidth(largeurColonneJour);
             enTete.setAlignment(Pos.CENTER);
-            enTete.setStyle("-fx-font-weight: bold;");
+            enTete.getStyleClass().add("titre-jour");
             ligneEntetes.getChildren().add(enTete);
         }
     }
@@ -146,7 +147,7 @@ public class EmploiDuTempsPane extends BorderPane {
             LocalTime heure = HEURE_DEBUT_GRILLE.plusMinutes(minute);
             if (heure.getMinute() == 0) {
                 Label label = new Label(heure.toString());
-                label.setStyle("-fx-text-fill: gray; -fx-font-size: 10;");
+                label.getStyleClass().add("grille-heure-label");
                 label.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE - 6);
                 label.setLayoutX(4);
                 pane.getChildren().add(label);
@@ -164,13 +165,23 @@ public class EmploiDuTempsPane extends BorderPane {
         double largeurTotale = JOURS_AFFICHES.length * largeurColonneJour;
         Pane pane = new Pane();
         pane.setPrefSize(largeurTotale, hauteur);
-        pane.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 0 1;");
+        pane.getStyleClass().add("grille-fond");
+
+        int indexAujourdhui = indexDuJour(LocalDate.now().getDayOfWeek());
+        if (indexAujourdhui >= 0) {
+            Region surbrillance = new Region();
+            surbrillance.setPrefSize(largeurColonneJour, hauteur);
+            surbrillance.setLayoutX(indexAujourdhui * largeurColonneJour);
+            surbrillance.getStyleClass().add("grille-aujourdhui");
+            surbrillance.setMouseTransparent(true);
+            pane.getChildren().add(surbrillance);
+        }
 
         for (int minute = 0; minute <= minutesGrille(); minute += PAS_AFFICHAGE_MINUTES) {
             Region ligne = new Region();
             ligne.setPrefSize(largeurTotale, 1);
             ligne.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE);
-            ligne.setStyle("-fx-background-color: #eeeeee;");
+            ligne.getStyleClass().add("grille-ligne");
             ligne.setMouseTransparent(true);
             pane.getChildren().add(ligne);
         }
@@ -178,7 +189,7 @@ public class EmploiDuTempsPane extends BorderPane {
             Region separateur = new Region();
             separateur.setPrefSize(1, hauteur);
             separateur.setLayoutX(i * largeurColonneJour);
-            separateur.setStyle("-fx-background-color: #e0e0e0;");
+            separateur.getStyleClass().add("grille-separateur");
             separateur.setMouseTransparent(true);
             pane.getChildren().add(separateur);
         }
@@ -240,7 +251,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
             libelle.setWrapText(true);
             libelle.setMouseTransparent(true);
-            libelle.setStyle("-fx-text-fill: white; -fx-font-size: 11;");
+            libelle.setStyle("-fx-text-fill: white; -fx-font-size: 11; -fx-font-weight: bold;");
             getChildren().add(libelle);
             setAlignment(Pos.TOP_LEFT);
             setPadding(new Insets(3, 2, 2, 4));
@@ -260,7 +271,8 @@ public class EmploiDuTempsPane extends BorderPane {
         private String styleFond() {
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : "#95a5a6";
-            return "-fx-background-color: " + couleur + "; -fx-background-radius: 4;";
+            return "-fx-background-color: " + couleur + "; -fx-background-radius: 8;"
+                    + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 4, 0, 0, 1);";
         }
 
         private void actualiser(int dayIndex, int debutMinutes, int finMinutes) {
@@ -358,6 +370,7 @@ public class EmploiDuTempsPane extends BorderPane {
                     "Crée d'abord un cours dans l'onglet \"Cours\" avant de remplir l'emploi du temps.");
             alerte.setTitle("Aucun cours disponible");
             alerte.setHeaderText(null);
+            Styles.appliquer(alerte);
             alerte.showAndWait();
             return;
         }
@@ -450,6 +463,12 @@ public class EmploiDuTempsPane extends BorderPane {
             dialogue.getDialogPane().getButtonTypes().add(boutonSupprimer);
         }
         dialogue.getDialogPane().getButtonTypes().addAll(boutonOuvrir, boutonValider, ButtonType.CANCEL);
+        Styles.appliquer(dialogue);
+        dialogue.getDialogPane().lookupButton(boutonValider).getStyleClass().add("bouton-primaire");
+        dialogue.getDialogPane().lookupButton(boutonOuvrir).getStyleClass().add("bouton-secondaire");
+        if (creneauExistant != null) {
+            dialogue.getDialogPane().lookupButton(boutonSupprimer).getStyleClass().add("bouton-danger");
+        }
 
         Optional<ButtonType> resultat = dialogue.showAndWait();
         if (resultat.isEmpty() || resultat.get() == ButtonType.CANCEL) {
@@ -471,6 +490,7 @@ public class EmploiDuTempsPane extends BorderPane {
                     "Choisis un cours et une plage horaire valide (fin après le début).");
             erreur.setTitle("Créneau invalide");
             erreur.setHeaderText(null);
+            Styles.appliquer(erreur);
             erreur.showAndWait();
             return;
         }
@@ -514,6 +534,7 @@ public class EmploiDuTempsPane extends BorderPane {
             Alert alerte = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier sélectionné pour ce créneau.");
             alerte.setTitle("Rien à ouvrir");
             alerte.setHeaderText(null);
+            Styles.appliquer(alerte);
             alerte.showAndWait();
             return;
         }
@@ -530,6 +551,7 @@ public class EmploiDuTempsPane extends BorderPane {
                     "Certains fichiers n'ont pas pu être ouverts :\n" + String.join("\n", echecs));
             alerte.setTitle("Ouverture partielle");
             alerte.setHeaderText(null);
+            Styles.appliquer(alerte);
             alerte.showAndWait();
         }
     }

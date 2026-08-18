@@ -51,7 +51,9 @@ public class CoursGestionPane extends BorderPane {
         this.emploiDuTemps = emploiDuTemps;
         this.surChangement = surChangement;
 
-        setPadding(new Insets(12));
+        messageVide.getStyleClass().add("texte-attenue");
+
+        setPadding(new Insets(16));
         setLeft(construireColonneListe());
         setCenter(construireDetails());
 
@@ -67,10 +69,12 @@ public class CoursGestionPane extends BorderPane {
 
         Button boutonNouveau = new Button("Nouveau cours");
         boutonNouveau.setMaxWidth(Double.MAX_VALUE);
+        boutonNouveau.getStyleClass().add("bouton-primaire");
         boutonNouveau.setOnAction(e -> creerCours());
 
         Button boutonSupprimer = new Button("Supprimer le cours");
         boutonSupprimer.setMaxWidth(Double.MAX_VALUE);
+        boutonSupprimer.getStyleClass().add("bouton-danger");
         boutonSupprimer.setOnAction(e -> supprimerCoursSelectionne());
 
         VBox colonne = new VBox(8, listeCours, boutonNouveau, boutonSupprimer);
@@ -100,9 +104,11 @@ public class CoursGestionPane extends BorderPane {
         VBox.setVgrow(listeFichiers, Priority.ALWAYS);
 
         Button boutonAjouterFichier = new Button("Ajouter des fichiers...");
+        boutonAjouterFichier.getStyleClass().add("bouton-secondaire");
         boutonAjouterFichier.setOnAction(e -> ajouterFichiers());
 
         Button boutonAjouterDossier = new Button("Ajouter un dossier...");
+        boutonAjouterDossier.getStyleClass().add("bouton-secondaire");
         boutonAjouterDossier.setOnAction(e -> ajouterDossier());
 
         Button boutonRetirerFichier = new Button("Retirer les fichiers sélectionnés");
@@ -110,9 +116,14 @@ public class CoursGestionPane extends BorderPane {
 
         HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier, boutonRetirerFichier);
 
+        Label titreNomCouleur = new Label("Nom et couleur");
+        titreNomCouleur.getStyleClass().add("titre-section");
+        Label titreFichiers = new Label("Fichiers du cours");
+        titreFichiers.getStyleClass().add("titre-section");
+
         panneauDetails.getChildren().addAll(
-                new Label("Nom et couleur"), ligneNomCouleur,
-                new Label("Fichiers du cours"), listeFichiers, boutonsFichiers);
+                titreNomCouleur, ligneNomCouleur,
+                titreFichiers, listeFichiers, boutonsFichiers);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
         return panneauDetails;
     }
@@ -149,6 +160,7 @@ public class CoursGestionPane extends BorderPane {
                 "Supprimer le cours \"" + selectionne.getNom() + "\" et ses créneaux associés ?");
         confirmation.setTitle("Supprimer le cours");
         confirmation.setHeaderText(null);
+        Styles.appliquer(confirmation);
         Optional<ButtonType> reponse = confirmation.showAndWait();
         if (reponse.isPresent() && reponse.get() == ButtonType.OK) {
             emploiDuTemps.supprimerCours(selectionne.getId());
@@ -216,6 +228,7 @@ public class CoursGestionPane extends BorderPane {
             Alert info = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier trouvé dans ce dossier.");
             info.setTitle("Dossier vide");
             info.setHeaderText(null);
+            Styles.appliquer(info);
             info.showAndWait();
             return;
         }
@@ -246,7 +259,12 @@ public class CoursGestionPane extends BorderPane {
     }
 
     private static class CoursCell extends ListCell<Cours> {
-        private final Circle pastille = new Circle(6);
+        private final Circle pastille = new Circle(7);
+
+        CoursCell() {
+            pastille.setStroke(Color.WHITE);
+            pastille.setStrokeWidth(1.5);
+        }
 
         @Override
         protected void updateItem(Cours cours, boolean vide) {

@@ -4,6 +4,7 @@ import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.persistence.DataStore;
 import com.teacherflow.ui.CoursGestionPane;
 import com.teacherflow.ui.EmploiDuTempsPane;
+import com.teacherflow.ui.Styles;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -37,7 +38,9 @@ public class App extends Application {
             }
         });
 
-        stage.setScene(new Scene(onglets, 1000, 700));
+        Scene scene = new Scene(onglets, 1000, 700);
+        Styles.appliquer(scene);
+        stage.setScene(scene);
         stage.setTitle("TeacherFlow");
         stage.setOnCloseRequest(e -> sauvegarder());
         stage.show();

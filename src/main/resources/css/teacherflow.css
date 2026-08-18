@@ -1,0 +1,189 @@
+.root {
+    -fx-warm-bg: #FFF7ED;
+    -fx-warm-panel: #FFFFFF;
+    -fx-warm-accent: #FB7A3C;
+    -fx-warm-accent-dark: #E4622A;
+    -fx-warm-secondary: #2FB6A6;
+    -fx-warm-secondary-dark: #219488;
+    -fx-warm-danger: #E85D5D;
+    -fx-warm-danger-dark: #CB4747;
+    -fx-warm-text: #3A2E28;
+    -fx-warm-text-muted: #9C8C80;
+    -fx-warm-border: #F0DCC4;
+
+    -fx-background-color: -fx-warm-bg;
+    -fx-text-fill: -fx-warm-text;
+    -fx-font-family: "Segoe UI", "Ubuntu", "Cantarell", "Helvetica Neue", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.label {
+    -fx-text-fill: -fx-warm-text;
+}
+
+/* --- Onglets --- */
+.tab-pane .tab-header-background {
+    -fx-background-color: -fx-warm-bg;
+}
+.tab-pane .tab-header-area {
+    -fx-padding: 10 0 0 12;
+}
+.tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 10 10 0 0;
+    -fx-padding: 9 22;
+}
+.tab-pane .tab:hover {
+    -fx-background-color: derive(-fx-warm-accent, 88%);
+}
+.tab-pane .tab:selected {
+    -fx-background-color: -fx-warm-accent;
+}
+.tab-pane .tab .tab-label {
+    -fx-text-fill: -fx-warm-text;
+    -fx-font-size: 13px;
+}
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.tab-pane .tab-content-area {
+    -fx-background-color: -fx-warm-bg;
+}
+
+/* --- Boutons --- */
+.button {
+    -fx-background-color: -fx-warm-panel;
+    -fx-text-fill: -fx-warm-text;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -fx-warm-border;
+    -fx-border-width: 1;
+    -fx-padding: 7 16;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: derive(-fx-warm-accent, 88%);
+    -fx-border-color: -fx-warm-accent;
+}
+.button:pressed {
+    -fx-background-color: derive(-fx-warm-accent, 70%);
+}
+
+.bouton-primaire {
+    -fx-background-color: -fx-warm-accent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent;
+}
+.bouton-primaire:hover {
+    -fx-background-color: -fx-warm-accent-dark;
+}
+.bouton-primaire:pressed {
+    -fx-background-color: derive(-fx-warm-accent-dark, -15%);
+}
+
+.bouton-secondaire {
+    -fx-background-color: -fx-warm-secondary;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent;
+}
+.bouton-secondaire:hover {
+    -fx-background-color: -fx-warm-secondary-dark;
+}
+
+.bouton-danger {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-warm-danger;
+    -fx-border-color: -fx-warm-danger;
+}
+.bouton-danger:hover {
+    -fx-background-color: derive(-fx-warm-danger, 85%);
+}
+
+/* --- Listes --- */
+.list-view {
+    -fx-background-color: -fx-warm-panel;
+    -fx-background-radius: 10;
+    -fx-border-color: -fx-warm-border;
+    -fx-border-radius: 10;
+    -fx-padding: 4;
+}
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10;
+    -fx-text-fill: -fx-warm-text;
+}
+.list-cell:filled:hover {
+    -fx-background-color: derive(-fx-warm-accent, 90%);
+}
+.list-cell:filled:selected {
+    -fx-background-color: -fx-warm-accent;
+    -fx-text-fill: white;
+}
+
+/* --- Champs --- */
+.text-field, .combo-box {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -fx-warm-border;
+    -fx-border-width: 1;
+    -fx-background-color: -fx-warm-panel;
+}
+.text-field:focused, .combo-box:focused {
+    -fx-border-color: -fx-warm-accent;
+}
+
+/* --- Titres et textes --- */
+.titre-section {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-warm-accent-dark;
+}
+.texte-attenue {
+    -fx-text-fill: -fx-warm-text-muted;
+    -fx-font-size: 14px;
+}
+
+/* --- Boîtes de dialogue --- */
+.dialog-pane {
+    -fx-background-color: -fx-warm-panel;
+}
+.dialog-pane .header-panel {
+    -fx-background-color: derive(-fx-warm-accent, 85%);
+}
+.dialog-pane .header-panel .label {
+    -fx-text-fill: -fx-warm-accent-dark;
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+}
+
+/* --- Grille emploi du temps --- */
+.scroll-pane, .scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+.grille-fond {
+    -fx-background-color: -fx-warm-panel;
+    -fx-border-color: -fx-warm-border;
+    -fx-border-width: 0 0 0 1;
+}
+.grille-ligne {
+    -fx-background-color: derive(-fx-warm-border, 20%);
+}
+.grille-separateur {
+    -fx-background-color: -fx-warm-border;
+}
+.grille-aujourdhui {
+    -fx-background-color: derive(-fx-warm-accent, 92%);
+}
+.grille-heure-label {
+    -fx-text-fill: -fx-warm-text-muted;
+    -fx-font-size: 10px;
+}
+.titre-jour {
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-warm-accent-dark;
+    -fx-font-size: 13px;
+}
