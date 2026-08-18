@@ -4,7 +4,6 @@ import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.persistence.DataStore;
 import com.teacherflow.ui.CoursGestionPane;
 import com.teacherflow.ui.EmploiDuTempsPane;
-import com.teacherflow.ui.Styles;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -42,12 +41,10 @@ public class App extends Application {
         ToggleButton boutonCours = new ToggleButton("Cours");
         boutonCours.setToggleGroup(groupeNavigation);
         boutonCours.setSelected(true);
-        boutonCours.getStyleClass().add("nav-bouton");
         boutonCours.setMaxWidth(Double.MAX_VALUE);
 
         ToggleButton boutonEmploiDuTemps = new ToggleButton("Emploi du temps");
         boutonEmploiDuTemps.setToggleGroup(groupeNavigation);
-        boutonEmploiDuTemps.getStyleClass().add("nav-bouton");
         boutonEmploiDuTemps.setMaxWidth(Double.MAX_VALUE);
 
         boutonCours.setOnAction(e -> afficherVue(vueCours, vueEmploiDuTemps));
@@ -57,13 +54,11 @@ public class App extends Application {
         });
 
         Label titreApp = new Label("TeacherFlow");
-        titreApp.getStyleClass().add("titre-app");
 
         Region espaceur = new Region();
         VBox.setVgrow(espaceur, Priority.ALWAYS);
 
         VBox barreLaterale = new VBox(4, titreApp, boutonCours, boutonEmploiDuTemps);
-        barreLaterale.getStyleClass().add("barre-laterale");
         barreLaterale.setPadding(new Insets(16, 8, 16, 8));
         barreLaterale.setPrefWidth(190);
 
@@ -72,7 +67,6 @@ public class App extends Application {
         racine.setCenter(contenu);
 
         Scene scene = new Scene(racine, 1050, 700);
-        Styles.appliquer(scene);
         stage.setScene(scene);
         stage.setTitle("TeacherFlow");
         stage.setOnCloseRequest(e -> sauvegarder());

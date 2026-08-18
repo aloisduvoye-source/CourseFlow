@@ -2,6 +2,7 @@ package com.teacherflow.ui;
 
 import javafx.scene.Group;
 import javafx.scene.Node;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.transform.Scale;
 
@@ -17,13 +18,9 @@ final class Icons {
     }
 
     static Node poubelle() {
-        return icone(CHEMIN_POUBELLE, "icone-poubelle");
-    }
-
-    private static Node icone(String chemin, String classeStyle) {
         SVGPath forme = new SVGPath();
-        forme.setContent(chemin);
-        forme.getStyleClass().add(classeStyle);
+        forme.setContent(CHEMIN_POUBELLE);
+        forme.setFill(Color.GRAY);
         Group groupe = new Group(forme);
         groupe.getTransforms().add(new Scale(0.6, 0.6));
         return groupe;
