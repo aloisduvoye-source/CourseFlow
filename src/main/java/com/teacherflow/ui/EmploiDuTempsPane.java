@@ -284,7 +284,16 @@ public class EmploiDuTempsPane extends BorderPane {
             setPrefHeight(Math.max(DUREE_MIN_MINUTES, finMinutes - debutMinutes) * PIXELS_PAR_MINUTE);
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String nomCours = cours != null ? cours.getNom() : "(cours supprimé)";
-            libelle.setText(nomCours + "\n" + minutesVersHeure(debutMinutes) + " - " + minutesVersHeure(finMinutes));
+
+            StringBuilder texte = new StringBuilder(nomCours);
+            if (creneau.getSalle() != null && !creneau.getSalle().isBlank()) {
+                texte.append(" · ").append(creneau.getSalle());
+            }
+            texte.append('\n').append(minutesVersHeure(debutMinutes)).append(" - ").append(minutesVersHeure(finMinutes));
+            if (creneau.getDescription() != null && !creneau.getDescription().isBlank()) {
+                texte.append('\n').append(creneau.getDescription());
+            }
+            libelle.setText(texte.toString());
         }
 
         private ModeInteraction determinerMode(double y) {
