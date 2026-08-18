@@ -10,16 +10,15 @@ import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Construit une représentation ASCII de l'emploi du temps de la semaine (une grille jours ×
- * heures), pour affichage dans un terminal via l'option {@code -s} de la commande {@code lecture}.
- * Chaque créneau est dessiné comme une boîte s'étendant sur autant de lignes que sa durée
- * (arrondie à l'heure supérieure), affichant nom (+ salle), description et fichiers dans la
- * limite de la place disponible.
+ * Construit une représentation ASCII de l'emploi du temps de la semaine : un tableau à
+ * bordures (une colonne par jour), où chaque créneau est une boîte (nom, salle, description,
+ * fichiers dans la limite de la durée) précédée de sa plage horaire. Les boîtes sont alignées
+ * par ordre chronologique au sein de chaque jour (1er créneau du jour sur la même ligne que
+ * le 1er des autres jours, etc.), pas par heure absolue.
  */
 public final class GrilleAscii {
 
@@ -27,10 +26,8 @@ public final class GrilleAscii {
             DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
             DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
     };
-    private static final int HEURE_DEBUT = 7;
-    private static final int HEURE_FIN = 20;
-    private static final int LARGEUR_CONTENU = 14;
-    private static final int LARGEUR_LABEL = 6;
+    private static final int LARGEUR_BOITE = 20;
+    private static final int LARGEUR_COLONNE = LARGEUR_BOITE + 4;
 
     private GrilleAscii() {
     }
@@ -39,118 +36,130 @@ public final class GrilleAscii {
      * @param aujourdhui le jour à marquer d'un astérisque dans l'en-tête (typiquement le jour système).
      */
     public static String construire(EmploiDuTemps emploiDuTemps, DayOfWeek aujourdhui) {
-        int nbRangees = HEURE_FIN - HEURE_DEBUT;
-
-        Map<DayOfWeek, Map<Integer, String>> parJour = new EnumMap<>(DayOfWeek.class);
+        Map<DayOfWeek, List<Creneau>> parJour = new EnumMap<>(DayOfWeek.class);
+        int maxCreneaux = 0;
         for (DayOfWeek jour : JOURS) {
-            parJour.put(jour, construireColonneJour(emploiDuTemps, jour, nbRangees));
+            List<Creneau> creneaux = emploiDuTemps.getCreneaux().stream()
+                    .filter(c -> c.getJour() == jour)
+                    .sorted(Comparator.comparing(Creneau::getHeureDebut))
+                    .toList();
+            parJour.put(jour, creneaux);
+            maxCreneaux = Math.max(maxCreneaux, creneaux.size());
         }
 
         StringBuilder texte = new StringBuilder();
-        texte.append(" ".repeat(LARGEUR_LABEL));
-        for (DayOfWeek jour : JOURS) {
-            String nom = NomsJours.nom(jour) + (jour == aujourdhui ? "*" : "");
-            texte.append("| ").append(centrer(nom, LARGEUR_CONTENU));
-        }
-        texte.append('\n');
-        texte.append("-".repeat(LARGEUR_LABEL + JOURS.length * (LARGEUR_CONTENU + 2)));
-        texte.append('\n');
+        texte.append(bordure('┌', '┬', '┐')).append('\n');
+        texte.append(ligneEnTetes(aujourdhui)).append('\n');
+        texte.append(bordure('├', '┼', '┤')).append('\n');
 
-        for (int rangee = 0; rangee < nbRangees; rangee++) {
-            texte.append(String.format("%02d:00 ", HEURE_DEBUT + rangee));
+        if (maxCreneaux == 0) {
+            texte.append(ligneVide()).append('\n');
+        }
+
+        for (int slot = 0; slot < maxCreneaux; slot++) {
+            List<List<String>> blocsParJour = new ArrayList<>();
+            int hauteurMax = 1;
             for (DayOfWeek jour : JOURS) {
-                String cellule = parJour.get(jour).get(rangee);
-                texte.append(cellule != null ? cellule : celluleVide());
+                List<Creneau> creneaux = parJour.get(jour);
+                List<String> bloc = slot < creneaux.size()
+                        ? construireBlocCreneau(emploiDuTemps, creneaux.get(slot))
+                        : List.of();
+                blocsParJour.add(bloc);
+                hauteurMax = Math.max(hauteurMax, bloc.size());
             }
-            texte.append('\n');
+
+            for (int ligne = 0; ligne < hauteurMax; ligne++) {
+                StringBuilder rangee = new StringBuilder("│");
+                for (List<String> bloc : blocsParJour) {
+                    String contenu = ligne < bloc.size() ? bloc.get(ligne) : "";
+                    rangee.append(' ').append(String.format("%-" + LARGEUR_COLONNE + "s", contenu)).append(' ').append('│');
+                }
+                texte.append(rangee).append('\n');
+            }
+            texte.append(ligneVide()).append('\n');
         }
 
+        texte.append(bordure('└', '┴', '┘')).append('\n');
         return texte.toString();
     }
 
-    private static Map<Integer, String> construireColonneJour(EmploiDuTemps emploiDuTemps, DayOfWeek jour, int nbRangees) {
-        Map<Integer, String> cellules = new HashMap<>();
-
-        List<Creneau> creneaux = emploiDuTemps.getCreneaux().stream()
-                .filter(c -> c.getJour() == jour)
-                .sorted(Comparator.comparing(Creneau::getHeureDebut))
-                .toList();
-
-        for (Creneau creneau : creneaux) {
-            int debutMinutes = creneau.getHeureDebut().getHour() * 60 + creneau.getHeureDebut().getMinute();
-            int finMinutes = creneau.getHeureFin().getHour() * 60 + creneau.getHeureFin().getMinute();
-            int rangeeDebut = (debutMinutes - HEURE_DEBUT * 60) / 60;
-            int dureeHeures = Math.max(1, (int) Math.ceil((finMinutes - debutMinutes) / 60.0));
-            int rangeeFin = rangeeDebut + dureeHeures;
-
-            rangeeDebut = clamp(rangeeDebut, 0, nbRangees - 1);
-            rangeeFin = clamp(rangeeFin, rangeeDebut + 1, nbRangees);
-            int hauteur = rangeeFin - rangeeDebut;
-            if (hauteur <= 0) {
-                continue;
-            }
-
-            List<String> contenu = construireContenuBoite(emploiDuTemps, creneau, hauteur);
-
-            for (int i = 0; i < hauteur; i++) {
-                int rangee = rangeeDebut + i;
-                if (cellules.containsKey(rangee)) {
-                    continue;
-                }
-                char bord = hauteur == 1 ? '│' : (i == 0 ? '┌' : (i == hauteur - 1 ? '└' : '│'));
-                String ligne = i < contenu.size() ? contenu.get(i) : "";
-                cellules.put(rangee, celluleBoite(bord, ligne));
-            }
-        }
-
-        return cellules;
-    }
-
     /**
-     * Contenu textuel d'une boîte de créneau, limité à {@code hauteurDisponible} lignes :
-     * nom (+ salle), puis description si la place le permet, puis autant de fichiers que
-     * possible (avec un "+N fichiers" si tous ne tiennent pas).
+     * Contenu d'un créneau : plage horaire, puis boîte (nom en majuscules, salle si présente,
+     * description si présente, et autant de fichiers que la durée le permet — un fichier par
+     * heure de durée, avec un "+N fichiers" si tous ne tiennent pas).
      */
-    private static List<String> construireContenuBoite(EmploiDuTemps emploiDuTemps, Creneau creneau, int hauteurDisponible) {
+    private static List<String> construireBlocCreneau(EmploiDuTemps emploiDuTemps, Creneau creneau) {
         List<String> lignes = new ArrayList<>();
+        lignes.add(String.format("%-" + LARGEUR_COLONNE + "s", creneau.getHeureDebut() + " - " + creneau.getHeureFin()));
+        lignes.add("┌" + "─".repeat(LARGEUR_BOITE + 2) + "┐");
 
         Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
-        String nom = cours != null ? cours.getNom() : "?";
-        String salle = creneau.getSalle();
-        String ligneNom = (salle != null && !salle.isBlank()) ? nom + " · " + salle : nom;
-        lignes.add(tronquer(ligneNom, LARGEUR_CONTENU));
+        String nom = (cours != null ? cours.getNom() : "?").toUpperCase();
+        lignes.add(ligneBoite(tronquer(nom, LARGEUR_BOITE)));
 
-        String description = creneau.getDescription();
-        if (hauteurDisponible > lignes.size() && description != null && !description.isBlank()) {
-            lignes.add(tronquer(description, LARGEUR_CONTENU));
+        String salle = creneau.getSalle();
+        if (salle != null && !salle.isBlank()) {
+            lignes.add(ligneBoite(tronquer("Salle : " + salle, LARGEUR_BOITE)));
         }
+        String description = creneau.getDescription();
+        if (description != null && !description.isBlank()) {
+            lignes.add(ligneBoite(tronquer(description, LARGEUR_BOITE)));
+        }
+
+        int debutMinutes = creneau.getHeureDebut().getHour() * 60 + creneau.getHeureDebut().getMinute();
+        int finMinutes = creneau.getHeureFin().getHour() * 60 + creneau.getHeureFin().getMinute();
+        int dureeHeures = Math.max(1, (int) Math.ceil((finMinutes - debutMinutes) / 60.0));
 
         List<Fichier> fichiers = emploiDuTemps.fichiersPourCreneau(creneau);
-        int placesRestantes = hauteurDisponible - lignes.size();
-        if (placesRestantes > 0 && !fichiers.isEmpty()) {
-            boolean troncature = fichiers.size() > placesRestantes;
-            int nbAffiches = troncature ? Math.max(0, placesRestantes - 1) : Math.min(placesRestantes, fichiers.size());
-            for (int i = 0; i < nbAffiches; i++) {
-                Fichier fichier = fichiers.get(i);
-                String libelle = (fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank())
-                        ? fichier.getNomAffichage() : fichier.getChemin();
-                lignes.add(tronquer("· " + libelle, LARGEUR_CONTENU));
-            }
-            if (troncature) {
-                int reste = fichiers.size() - nbAffiches;
-                lignes.add(tronquer("+" + reste + " fichier" + (reste > 1 ? "s" : ""), LARGEUR_CONTENU));
-            }
+        int nbAffiches = Math.min(dureeHeures, fichiers.size());
+        boolean troncature = fichiers.size() > nbAffiches;
+        if (troncature) {
+            nbAffiches = Math.max(0, nbAffiches - 1);
+        }
+        for (int i = 0; i < nbAffiches; i++) {
+            Fichier fichier = fichiers.get(i);
+            String libelle = (fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank())
+                    ? fichier.getNomAffichage() : fichier.getChemin();
+            lignes.add(ligneBoite(tronquer("· " + libelle, LARGEUR_BOITE)));
+        }
+        if (troncature) {
+            int reste = fichiers.size() - nbAffiches;
+            lignes.add(ligneBoite(tronquer("+" + reste + " fichier" + (reste > 1 ? "s" : ""), LARGEUR_BOITE)));
         }
 
+        lignes.add("└" + "─".repeat(LARGEUR_BOITE + 2) + "┘");
         return lignes;
     }
 
-    private static String celluleVide() {
-        return "| " + " ".repeat(LARGEUR_CONTENU);
+    private static String ligneBoite(String contenuTronque) {
+        return "│ " + String.format("%-" + LARGEUR_BOITE + "s", contenuTronque) + " │";
     }
 
-    private static String celluleBoite(char bord, String contenu) {
-        return bord + " " + String.format("%-" + LARGEUR_CONTENU + "s", contenu);
+    private static String ligneEnTetes(DayOfWeek aujourdhui) {
+        StringBuilder rangee = new StringBuilder("│");
+        for (DayOfWeek jour : JOURS) {
+            String nom = NomsJours.nom(jour).toUpperCase() + (jour == aujourdhui ? "*" : "");
+            rangee.append(' ').append(centrer(nom, LARGEUR_COLONNE)).append(' ').append('│');
+        }
+        return rangee.toString();
+    }
+
+    private static String ligneVide() {
+        StringBuilder rangee = new StringBuilder("│");
+        for (int i = 0; i < JOURS.length; i++) {
+            rangee.append(' ').append(" ".repeat(LARGEUR_COLONNE)).append(' ').append('│');
+        }
+        return rangee.toString();
+    }
+
+    private static String bordure(char gauche, char milieu, char droite) {
+        StringBuilder rangee = new StringBuilder();
+        rangee.append(gauche);
+        for (int i = 0; i < JOURS.length; i++) {
+            rangee.append("─".repeat(LARGEUR_COLONNE + 2));
+            rangee.append(i < JOURS.length - 1 ? milieu : droite);
+        }
+        return rangee.toString();
     }
 
     private static String tronquer(String texte, int largeur) {
@@ -166,9 +175,5 @@ public final class GrilleAscii {
         int gauche = espaceTotal / 2;
         int droite = espaceTotal - gauche;
         return " ".repeat(Math.max(0, gauche)) + tronque + " ".repeat(Math.max(0, droite));
-    }
-
-    private static int clamp(int valeur, int min, int max) {
-        return Math.max(min, Math.min(max, valeur));
     }
 }
