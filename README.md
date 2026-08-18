@@ -60,7 +60,13 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 
 ## État actuel du projet
 
-Le squelette Maven/JavaFX est en place ([pom.xml](pom.xml), [App.java](src/main/java/com/teacherflow/app/App.java)) mais aucune fonctionnalité métier n'est encore implémentée : c'est une fenêtre vide. Ce README sert de cadrage avant le démarrage du développement.
+Le squelette Maven/JavaFX est en place ([pom.xml](pom.xml), [App.java](src/main/java/com/teacherflow/app/App.java)), et le socle du modèle de données est implémenté et testé :
+
+- Modèle (`com.teacherflow.model`) : [Fichier](src/main/java/com/teacherflow/model/Fichier.java), [Cours](src/main/java/com/teacherflow/model/Cours.java), [Creneau](src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java)
+- Persistance JSON (`com.teacherflow.persistence`) : [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson), fichier par défaut `~/.teacherflow/data.json`
+- Tests unitaires (`mvn test`) couvrant la résolution des fichiers par créneau et le cycle sauvegarde/rechargement
+
+L'interface graphique (grille emploi du temps, gestion des cours) et la commande `lecture` restent à construire par-dessus ce socle.
 
 ## Roadmap
 
@@ -70,10 +76,11 @@ Le squelette Maven/JavaFX est en place ([pom.xml](pom.xml), [App.java](src/main/
 - [ ] Décider du format d'invocation de `lecture` (script wrapper, `jpackage` avec plusieurs points d'entrée, ou sous-commande de l'app principale)
 - [ ] Esquisser les écrans principaux (wireframes rapides) : grille emploi du temps, gestion des cours, sélection de fichiers par créneau
 
-### Phase 1 — Modèle de données & persistance
-- Implémentation des classes `Cours`, `Fichier`, `Créneau`, `EmploiDuTemps`
-- Sérialisation/désérialisation (sauvegarde et rechargement des données entre deux lancements)
-- Emplacement de stockage des données utilisateur (répertoire de config standard selon l'OS)
+### Phase 1 — Modèle de données & persistance ✅
+- [x] Implémentation des classes `Cours`, `Fichier`, `Créneau`, `EmploiDuTemps`
+- [x] Sérialisation/désérialisation JSON (Jackson) — sauvegarde et rechargement des données entre deux lancements
+- [x] Emplacement de stockage des données utilisateur (`~/.teacherflow/data.json`)
+- [x] Tests unitaires de validation (modèle + persistance)
 
 ### Phase 2 — Gestion des Cours
 - Écran de création/édition d'un Cours (nom, couleur)

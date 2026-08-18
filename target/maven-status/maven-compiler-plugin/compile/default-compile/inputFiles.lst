@@ -1,2 +1,7 @@
 /home/duvoye/TeacherFlow/src/main/java/com/teacherflow/app/App.java
+/home/duvoye/TeacherFlow/src/main/java/com/teacherflow/model/Cours.java
+/home/duvoye/TeacherFlow/src/main/java/com/teacherflow/model/Creneau.java
+/home/duvoye/TeacherFlow/src/main/java/com/teacherflow/model/EmploiDuTemps.java
+/home/duvoye/TeacherFlow/src/main/java/com/teacherflow/model/Fichier.java
+/home/duvoye/TeacherFlow/src/main/java/com/teacherflow/persistence/DataStore.java
 /home/duvoye/TeacherFlow/src/main/java/module-info.java
