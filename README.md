@@ -62,7 +62,8 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 
 - **Socle (modèle + persistance)** ✅ — [Fichier](src/main/java/com/teacherflow/model/Fichier.java), [Cours](src/main/java/com/teacherflow/model/Cours.java), [Creneau](src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) ; persistance JSON via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson) dans `~/.teacherflow/data.json` ; couvert par des tests unitaires (`mvn test`).
 - **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle ou import d'un dossier entier) ou en retirer plusieurs à la fois, supprimer un cours. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
-- **Reste à construire** : la grille d'emploi du temps (Phase 3), la sélection de fichiers par créneau (Phase 4) et la commande `lecture` (Phase 5).
+- **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille hebdomadaire Lundi-Samedi (8h-19h, pas de 30 min), créer/modifier/supprimer un créneau via une boîte de dialogue, rendu coloré par cours. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
+- **Reste à construire** : la sélection de fichiers par créneau (Phase 4) et la commande `lecture` (Phase 5).
 
 ## Roadmap
 
@@ -84,10 +85,10 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 - [x] Suppression de fichiers (sélection multiple) et suppression d'un Cours (avec confirmation, cascade sur ses créneaux)
 - [x] Liste/vue d'ensemble des Cours existants
 
-### Phase 3 — Emploi du temps
-- Grille hebdomadaire (jours en colonnes, heures en lignes)
-- Assignation d'un Cours à un créneau (création/édition/suppression de créneau)
-- Vue visuelle claire (couleur du cours, nom, horaires)
+### Phase 3 — Emploi du temps ✅
+- [x] Grille hebdomadaire (Lundi-Samedi en colonnes, 8h-19h par pas de 30 min en lignes)
+- [x] Assignation d'un Cours à un créneau (création/édition/suppression via une boîte de dialogue au clic)
+- [x] Vue visuelle claire (couleur du cours, nom, horaires), validée manuellement dans l'application
 
 ### Phase 4 — Sélection de fichiers par créneau
 - Pour un créneau donné, interface de sélection des fichiers à utiliser parmi ceux du Cours associé
@@ -120,4 +121,4 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 
 ## Prochaine étape suggérée
 
-Phase 3 — construire la grille d'emploi du temps (jours × heures) qui assigne un Cours à chaque créneau, par-dessus le socle `EmploiDuTemps`/`Creneau` déjà en place. C'est le préalable à la Phase 4 (sélection de fichiers par créneau) et à la commande `lecture` (Phase 5), qui ont toutes deux besoin de créneaux existants pour être utiles.
+Phase 4 — dans l'écran d'un créneau (clic sur un bloc de la grille), permettre de choisir précisément quels fichiers du Cours associé sont utiles pour cette séance (au lieu d'utiliser toute la bibliothèque du cours par défaut), avec un bouton "ouvrir maintenant". C'est le dernier maillon manquant avant la commande `lecture` (Phase 5), qui n'a de sens que si des créneaux ont une sélection de fichiers définie.
