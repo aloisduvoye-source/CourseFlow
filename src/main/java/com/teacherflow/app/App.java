@@ -3,9 +3,12 @@ package com.teacherflow.app;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.persistence.DataStore;
 import com.teacherflow.ui.CoursGestionPane;
+import com.teacherflow.ui.EmploiDuTempsPane;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -19,9 +22,22 @@ public class App extends Application {
     public void start(Stage stage) {
         emploiDuTemps = chargerDonnees();
 
-        CoursGestionPane racine = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
+        CoursGestionPane ongletCours = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
+        EmploiDuTempsPane ongletEmploiDuTemps = new EmploiDuTempsPane(emploiDuTemps, this::sauvegarder);
 
-        stage.setScene(new Scene(racine, 900, 600));
+        Tab tabCours = new Tab("Cours", ongletCours);
+        tabCours.setClosable(false);
+        Tab tabEmploiDuTemps = new Tab("Emploi du temps", ongletEmploiDuTemps);
+        tabEmploiDuTemps.setClosable(false);
+
+        TabPane onglets = new TabPane(tabCours, tabEmploiDuTemps);
+        onglets.getSelectionModel().selectedItemProperty().addListener((obs, ancien, nouveau) -> {
+            if (nouveau == tabEmploiDuTemps) {
+                ongletEmploiDuTemps.rafraichir();
+            }
+        });
+
+        stage.setScene(new Scene(onglets, 1000, 700));
         stage.setTitle("TeacherFlow");
         stage.setOnCloseRequest(e -> sauvegarder());
         stage.show();
