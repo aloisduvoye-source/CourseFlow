@@ -12,6 +12,7 @@ import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -19,10 +20,12 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,15 +96,19 @@ public class CoursGestionPane extends BorderPane {
         HBox.setHgrow(champNom, Priority.ALWAYS);
 
         listeFichiers.setCellFactory(vue -> new FichierCell());
+        listeFichiers.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         VBox.setVgrow(listeFichiers, Priority.ALWAYS);
 
         Button boutonAjouterFichier = new Button("Ajouter des fichiers...");
         boutonAjouterFichier.setOnAction(e -> ajouterFichiers());
 
-        Button boutonRetirerFichier = new Button("Retirer le fichier sélectionné");
-        boutonRetirerFichier.setOnAction(e -> retirerFichierSelectionne());
+        Button boutonAjouterDossier = new Button("Ajouter un dossier...");
+        boutonAjouterDossier.setOnAction(e -> ajouterDossier());
 
-        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonRetirerFichier);
+        Button boutonRetirerFichier = new Button("Retirer les fichiers sélectionnés");
+        boutonRetirerFichier.setOnAction(e -> retirerFichiersSelectionnes());
+
+        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier, boutonRetirerFichier);
 
         panneauDetails.getChildren().addAll(
                 new Label("Nom et couleur"), ligneNomCouleur,
@@ -192,14 +199,43 @@ public class CoursGestionPane extends BorderPane {
         notifierChangement();
     }
 
-    private void retirerFichierSelectionne() {
+    private void ajouterDossier() {
         Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
-        Fichier fichierSelectionne = listeFichiers.getSelectionModel().getSelectedItem();
-        if (selectionne == null || fichierSelectionne == null) {
+        if (selectionne == null) {
             return;
         }
-        selectionne.retirerFichier(fichierSelectionne.getId());
-        listeFichiers.getItems().remove(fichierSelectionne);
+        DirectoryChooser selecteur = new DirectoryChooser();
+        selecteur.setTitle("Choisir un dossier pour \"" + selectionne.getNom() + "\"");
+        Window fenetre = getScene() != null ? getScene().getWindow() : null;
+        File dossier = selecteur.showDialog(fenetre);
+        if (dossier == null) {
+            return;
+        }
+        File[] fichiersDuDossier = dossier.listFiles(f -> f.isFile() && !f.isHidden());
+        if (fichiersDuDossier == null || fichiersDuDossier.length == 0) {
+            Alert info = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier trouvé dans ce dossier.");
+            info.setTitle("Dossier vide");
+            info.setHeaderText(null);
+            info.showAndWait();
+            return;
+        }
+        for (File fichier : fichiersDuDossier) {
+            selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
+        }
+        listeFichiers.getItems().setAll(selectionne.getFichiers());
+        notifierChangement();
+    }
+
+    private void retirerFichiersSelectionnes() {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        List<Fichier> fichiersSelectionnes = new ArrayList<>(listeFichiers.getSelectionModel().getSelectedItems());
+        if (selectionne == null || fichiersSelectionnes.isEmpty()) {
+            return;
+        }
+        for (Fichier fichier : fichiersSelectionnes) {
+            selectionne.retirerFichier(fichier.getId());
+        }
+        listeFichiers.getItems().removeAll(fichiersSelectionnes);
         notifierChangement();
     }
 
@@ -237,7 +273,7 @@ public class CoursGestionPane extends BorderPane {
             }
             String libelle = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
                     ? fichier.getNomAffichage() : fichier.getChemin();
-            setText(libelle + "  (" + fichier.getChemin() + ")");
+            setText(libelle);
         }
     }
 }
