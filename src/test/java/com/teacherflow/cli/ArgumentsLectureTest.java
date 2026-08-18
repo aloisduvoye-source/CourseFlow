@@ -102,6 +102,26 @@ class ArgumentsLectureTest {
     }
 
     @Test
+    void optionSBasculeEnModeSemaine() {
+        ArgumentsLecture arguments = ArgumentsLecture.analyser(
+                new String[]{"-s"}, DayOfWeek.MONDAY, LocalTime.of(8, 0));
+
+        assertEquals(ArgumentsLecture.Mode.SEMAINE, arguments.getMode());
+    }
+
+    @Test
+    void sEtPEnsembleLeveUneErreur() {
+        assertThrows(IllegalArgumentException.class, () ->
+                ArgumentsLecture.analyser(new String[]{"-s", "-p"}, DayOfWeek.MONDAY, LocalTime.of(8, 0)));
+    }
+
+    @Test
+    void sEtNEnsembleLeveUneErreur() {
+        assertThrows(IllegalArgumentException.class, () ->
+                ArgumentsLecture.analyser(new String[]{"-s", "-n"}, DayOfWeek.MONDAY, LocalTime.of(8, 0)));
+    }
+
+    @Test
     void jourInconnuLeveUneErreur() {
         assertThrows(IllegalArgumentException.class, () ->
                 ArgumentsLecture.analyser(new String[]{"--jour", "Bricoledi"}, DayOfWeek.MONDAY, LocalTime.of(8, 0)));

@@ -10,12 +10,13 @@ import java.time.format.DateTimeParseException;
  * Analyse des arguments de la commande {@code lecture} : {@code --jour <nom>} et/ou
  * {@code --heure HH:mm} pour cibler un autre créneau, {@code -p}/{@code -n} pour naviguer
  * vers le créneau précédent/suivant, {@code -l} pour lister les fichiers du créneau résolu
- * au lieu de les ouvrir. Donner {@code --jour} sans {@code --heure} bascule en mode "liste
- * des créneaux du jour" plutôt que de chercher un créneau précis.
+ * au lieu de les ouvrir, {@code -s} pour afficher l'emploi du temps de la semaine en grille
+ * ASCII. Donner {@code --jour} sans {@code --heure} bascule en mode "liste des créneaux du
+ * jour" plutôt que de chercher un créneau précis.
  */
 public final class ArgumentsLecture {
 
-    public enum Mode { CRENEAU_COURANT, LISTE_JOUR, PRECEDENT, SUIVANT }
+    public enum Mode { CRENEAU_COURANT, LISTE_JOUR, PRECEDENT, SUIVANT, SEMAINE }
 
     private final DayOfWeek jour;
     private final LocalTime heure;
@@ -53,6 +54,7 @@ public final class ArgumentsLecture {
         boolean precedent = false;
         boolean suivant = false;
         boolean listerFichiers = false;
+        boolean semaine = false;
 
         int i = 0;
         while (i < args.length) {
@@ -89,6 +91,10 @@ public final class ArgumentsLecture {
                     listerFichiers = true;
                     i += 1;
                 }
+                case "-s" -> {
+                    semaine = true;
+                    i += 1;
+                }
                 default -> throw new IllegalArgumentException("Option inconnue : \"" + option + "\".");
             }
         }
@@ -96,9 +102,14 @@ public final class ArgumentsLecture {
         if (precedent && suivant) {
             throw new IllegalArgumentException("Les options -p et -n sont incompatibles.");
         }
+        if (semaine && (precedent || suivant)) {
+            throw new IllegalArgumentException("L'option -s est incompatible avec -p/-n.");
+        }
 
         Mode mode;
-        if (precedent) {
+        if (semaine) {
+            mode = Mode.SEMAINE;
+        } else if (precedent) {
             mode = Mode.PRECEDENT;
         } else if (suivant) {
             mode = Mode.SUIVANT;

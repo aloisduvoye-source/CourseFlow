@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
  * Point d'entrée CLI headless (sans interface graphique) : ouvre les fichiers du créneau
  * courant, du créneau ciblé via {@code --jour}/{@code --heure}, ou du créneau précédent/suivant
  * via {@code -p}/{@code -n}. {@code --jour} seul (sans {@code --heure}) liste les créneaux du
- * jour. {@code -l} liste les fichiers du créneau résolu au lieu de les ouvrir.
+ * jour. {@code -l} liste les fichiers du créneau résolu au lieu de les ouvrir. {@code -s}
+ * affiche l'emploi du temps de la semaine en grille ASCII.
  */
 public final class Lecture {
 
@@ -40,7 +41,7 @@ public final class Lecture {
             arguments = ArgumentsLecture.analyser(args, LocalDate.now().getDayOfWeek(), LocalTime.now());
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
-            System.err.println("Usage : lecture [--jour <Lundi|Mardi|...>] [--heure HH:mm] [-p | -n] [-l] [--help]");
+            System.err.println("Usage : lecture [--jour <Lundi|Mardi|...>] [--heure HH:mm] [-p | -n] [-l] [-s] [--help]");
             System.exit(2);
             return;
         }
@@ -57,6 +58,7 @@ public final class Lecture {
         }
 
         switch (arguments.getMode()) {
+            case SEMAINE -> System.out.print(GrilleAscii.construire(emploiDuTemps, LocalDate.now().getDayOfWeek()));
             case LISTE_JOUR -> listerCreneauxDuJour(emploiDuTemps, arguments.getJour());
             case SUIVANT -> traiterCreneauRelatif(emploiDuTemps, arguments, true);
             case PRECEDENT -> traiterCreneauRelatif(emploiDuTemps, arguments, false);
@@ -78,6 +80,7 @@ public final class Lecture {
                   -n                   Ouvre le créneau suivant (boucle en fin de semaine)
                   -p                   Ouvre le créneau précédent (boucle en début de semaine)
                   -l                   Liste les fichiers du créneau résolu au lieu de les ouvrir
+                  -s                   Affiche l'emploi du temps de la semaine en grille ASCII
                   .                    Lance l'application graphique (comme "code .")
                   --help, -h           Affiche cette aide
 
@@ -87,6 +90,7 @@ public final class Lecture {
                   lecture --jour Mardi
                   lecture -n
                   lecture -n -l
+                  lecture -s
                   lecture .""");
     }
 
