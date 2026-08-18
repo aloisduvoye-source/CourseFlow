@@ -102,6 +102,23 @@
     -fx-background-color: derive(-fx-warm-danger, 85%);
 }
 
+.bouton-icone {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 4;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.bouton-icone:hover {
+    -fx-background-color: derive(-fx-warm-danger, 88%);
+}
+.icone-poubelle {
+    -fx-fill: -fx-warm-text-muted;
+}
+.bouton-icone:hover .icone-poubelle {
+    -fx-fill: -fx-warm-danger;
+}
+
 /* --- Listes --- */
 .list-view {
     -fx-background-color: -fx-warm-panel;

@@ -12,11 +12,11 @@ import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -25,7 +25,6 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -100,7 +99,6 @@ public class CoursGestionPane extends BorderPane {
         HBox.setHgrow(champNom, Priority.ALWAYS);
 
         listeFichiers.setCellFactory(vue -> new FichierCell());
-        listeFichiers.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         VBox.setVgrow(listeFichiers, Priority.ALWAYS);
 
         Button boutonAjouterFichier = new Button("Ajouter des fichiers...");
@@ -111,10 +109,7 @@ public class CoursGestionPane extends BorderPane {
         boutonAjouterDossier.getStyleClass().add("bouton-secondaire");
         boutonAjouterDossier.setOnAction(e -> ajouterDossier());
 
-        Button boutonRetirerFichier = new Button("Retirer les fichiers sélectionnés");
-        boutonRetirerFichier.setOnAction(e -> retirerFichiersSelectionnes());
-
-        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier, boutonRetirerFichier);
+        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier);
 
         Label titreNomCouleur = new Label("Nom et couleur");
         titreNomCouleur.getStyleClass().add("titre-section");
@@ -239,16 +234,13 @@ public class CoursGestionPane extends BorderPane {
         notifierChangement();
     }
 
-    private void retirerFichiersSelectionnes() {
+    private void retirerFichier(Fichier fichier) {
         Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
-        List<Fichier> fichiersSelectionnes = new ArrayList<>(listeFichiers.getSelectionModel().getSelectedItems());
-        if (selectionne == null || fichiersSelectionnes.isEmpty()) {
+        if (selectionne == null) {
             return;
         }
-        for (Fichier fichier : fichiersSelectionnes) {
-            selectionne.retirerFichier(fichier.getId());
-        }
-        listeFichiers.getItems().removeAll(fichiersSelectionnes);
+        selectionne.retirerFichier(fichier.getId());
+        listeFichiers.getItems().remove(fichier);
         notifierChangement();
     }
 
@@ -289,17 +281,38 @@ public class CoursGestionPane extends BorderPane {
         }
     }
 
-    private static class FichierCell extends ListCell<Fichier> {
+    private class FichierCell extends ListCell<Fichier> {
+        private final Label libelle = new Label();
+        private final Button boutonSupprimer = new Button();
+        private final HBox ligne = new HBox();
+
+        FichierCell() {
+            boutonSupprimer.setGraphic(Icons.poubelle());
+            boutonSupprimer.getStyleClass().add("bouton-icone");
+            boutonSupprimer.setOnAction(e -> {
+                Fichier fichier = getItem();
+                if (fichier != null) {
+                    retirerFichier(fichier);
+                }
+            });
+
+            Region espaceur = new Region();
+            HBox.setHgrow(espaceur, Priority.ALWAYS);
+
+            ligne.setAlignment(Pos.CENTER_LEFT);
+            ligne.getChildren().addAll(libelle, espaceur, boutonSupprimer);
+        }
+
         @Override
         protected void updateItem(Fichier fichier, boolean vide) {
             super.updateItem(fichier, vide);
             if (vide || fichier == null) {
-                setText(null);
+                setGraphic(null);
                 return;
             }
-            String libelle = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
-                    ? fichier.getNomAffichage() : fichier.getChemin();
-            setText(libelle);
+            libelle.setText(fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
+                    ? fichier.getNomAffichage() : fichier.getChemin());
+            setGraphic(ligne);
         }
     }
 }
