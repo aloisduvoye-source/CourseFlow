@@ -55,15 +55,35 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 - **UI** : JavaFX 21 (javafx-controls, javafx-fxml)
 - **Build** : Maven (javafx-maven-plugin déjà configuré)
 - **Persistance** : à trancher (voir Phase 1 de la roadmap) — probablement fichier local structuré (JSON) dans un premier temps, avec migration possible vers SQLite si le volume de données ou les besoins de requêtage le justifient.
-- **Ouverture de fichiers** : `java.awt.Desktop` (API standard, multiplateforme, ouvre un fichier avec l'application associée du système).
+- **Ouverture de fichiers** : commande native du système (`xdg-open` sur Linux, `open` sur macOS, `start` sur Windows) via `ProcessBuilder`. `java.awt.Desktop` a été écarté : l'initialiser dans une appli JavaFX sur Linux charge un toolkit GTK concurrent de celui de JavaFX et fait planter la JVM.
 - **Packaging final envisagé** : `jpackage` pour produire des installeurs natifs (Windows/macOS/Linux) et exposer la commande `lecture` comme exécutable accessible depuis le terminal.
+
+## Installation et démarrage
+
+### Prérequis
+- JDK 21
+- Maven 3.8+
+
+### Lancer l'application
+```
+mvn javafx:run
+```
+
+### Lancer les tests
+```
+mvn test
+```
+
+### Données utilisateur
+Les données (cours, fichiers, créneaux) sont chargées et sauvegardées automatiquement dans `~/.teacherflow/data.json` — à chaque modification et à la fermeture de la fenêtre. Aucune configuration manuelle n'est nécessaire : ce fichier est créé au premier lancement.
 
 ## État actuel du projet
 
 - **Socle (modèle + persistance)** ✅ — [Fichier](src/main/java/com/teacherflow/model/Fichier.java), [Cours](src/main/java/com/teacherflow/model/Cours.java), [Creneau](src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) ; persistance JSON via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson) dans `~/.teacherflow/data.json` ; couvert par des tests unitaires (`mvn test`).
 - **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle ou import d'un dossier entier) ou en retirer plusieurs à la fois, supprimer un cours. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
-- **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille hebdomadaire Lundi-Samedi (8h-19h, pas de 30 min), créer/modifier/supprimer un créneau via une boîte de dialogue, rendu coloré par cours. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
-- **Reste à construire** : la sélection de fichiers par créneau (Phase 4) et la commande `lecture` (Phase 5).
+- **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille des 7 jours (7h-20h), créer/modifier/supprimer un créneau via une boîte de dialogue, rendu coloré par cours. Un créneau placé peut être glissé à la souris (déplacement libre entre jours et horaires, par pas de 10 min) et redimensionné en tirant son bord haut/bas. La largeur des colonnes s'adapte à la largeur de la fenêtre. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
+- **Sélection de fichiers par créneau (UI)** ✅ — dans la boîte de dialogue d'un créneau : liste à cocher des fichiers du Cours associé (tout coché par défaut à la création), boutons "Tout cocher"/"Tout décocher", et bouton "Ouvrir maintenant" qui ouvre les fichiers cochés sans passer par le terminal. Testé manuellement dans l'application.
+- **Reste à construire** : la commande `lecture` (Phase 5).
 
 ## Roadmap
 
@@ -86,19 +106,21 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 - [x] Liste/vue d'ensemble des Cours existants
 
 ### Phase 3 — Emploi du temps ✅
-- [x] Grille hebdomadaire (Lundi-Samedi en colonnes, 8h-19h par pas de 30 min en lignes)
+- [x] Grille des 7 jours (7h-20h en lignes)
 - [x] Assignation d'un Cours à un créneau (création/édition/suppression via une boîte de dialogue au clic)
 - [x] Vue visuelle claire (couleur du cours, nom, horaires), validée manuellement dans l'application
+- [x] Déplacement d'un créneau à la souris (jour + heure, par pas de 10 min) et redimensionnement en tirant un bord
+- [x] Largeur des colonnes adaptée à la largeur de la fenêtre (repli en défilement horizontal en dessous d'une largeur minimale)
 
-### Phase 4 — Sélection de fichiers par créneau
-- Pour un créneau donné, interface de sélection des fichiers à utiliser parmi ceux du Cours associé
-- Distinction visuelle entre "fichiers du cours" et "fichiers sélectionnés pour cette séance"
-- Bouton "ouvrir maintenant" depuis l'interface graphique (ouvre les fichiers du créneau sélectionné, sans passer par le terminal)
+### Phase 4 — Sélection de fichiers par créneau ✅
+- [x] Pour un créneau donné, interface de sélection des fichiers à utiliser parmi ceux du Cours associé (liste à cocher, tout coché par défaut)
+- [x] Distinction visuelle entre "fichiers du cours" (liste complète affichée) et "fichiers sélectionnés pour cette séance" (cases cochées)
+- [x] Bouton "ouvrir maintenant" depuis l'interface graphique (ouvre les fichiers cochés du créneau, sans passer par le terminal)
 
 ### Phase 5 — Commande `lecture`
 - Mode d'exécution headless / point d'entrée CLI dédié
 - Détection automatique du créneau courant (jour + heure système)
-- Ouverture des fichiers associés via `Desktop.open`
+- Ouverture des fichiers associés via une commande native (`xdg-open`/`open`/`start`, voir Stack technique)
 - Gestion des cas limites : aucun créneau à l'heure actuelle, fichier introuvable/déplacé, plusieurs fichiers à ouvrir simultanément
 - Option pour cibler un autre créneau que celui du moment (ex. préparer le cours suivant, ou un jour donné)
 
@@ -121,4 +143,4 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 
 ## Prochaine étape suggérée
 
-Phase 4 — dans l'écran d'un créneau (clic sur un bloc de la grille), permettre de choisir précisément quels fichiers du Cours associé sont utiles pour cette séance (au lieu d'utiliser toute la bibliothèque du cours par défaut), avec un bouton "ouvrir maintenant". C'est le dernier maillon manquant avant la commande `lecture` (Phase 5), qui n'a de sens que si des créneaux ont une sélection de fichiers définie.
+Phase 5 — la commande `lecture` : un point d'entrée CLI headless qui détecte le créneau courant (jour + heure système) et ouvre les fichiers qui lui sont associés, en réutilisant le socle (`EmploiDuTemps`, `DataStore`) et la logique d'ouverture de fichiers déjà en place côté UI.

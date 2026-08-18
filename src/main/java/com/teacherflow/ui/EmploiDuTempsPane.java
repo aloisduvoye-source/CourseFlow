@@ -3,18 +3,23 @@ package com.teacherflow.ui;
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
+import com.teacherflow.model.Fichier;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.event.Event;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -25,12 +30,17 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Grille hebdomadaire (jours × heures) permettant d'assigner un {@link Cours} à chaque
@@ -363,17 +373,60 @@ public class EmploiDuTempsPane extends BorderPane {
         ComboBox<LocalTime> choixFin = new ComboBox<>();
         choixFin.getItems().addAll(optionsFin);
 
+        Set<UUID> fichiersCoches = new LinkedHashSet<>();
+        Cours coursInitial;
         if (creneauExistant != null) {
-            emploiDuTemps.trouverCours(creneauExistant.getCoursId()).ifPresent(choixCours::setValue);
+            coursInitial = emploiDuTemps.trouverCours(creneauExistant.getCoursId())
+                    .orElse(emploiDuTemps.getCours().get(0));
+            fichiersCoches.addAll(creneauExistant.getFichiersSelectionnesIds());
             choixDebut.setValue(creneauExistant.getHeureDebut());
             choixFin.setValue(creneauExistant.getHeureFin());
         } else {
-            choixCours.setValue(emploiDuTemps.getCours().get(0));
+            coursInitial = emploiDuTemps.getCours().get(0);
+            coursInitial.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
             choixDebut.setValue(heureDebutParDefaut);
             LocalTime finParDefaut = heureDebutParDefaut.plusHours(1);
             choixFin.setValue(optionsFin.contains(finParDefaut)
                     ? finParDefaut : optionsFin.get(optionsFin.size() - 1));
         }
+        choixCours.setValue(coursInitial);
+
+        ListView<Fichier> listeFichiers = new ListView<>();
+        listeFichiers.setPrefHeight(140);
+        listeFichiers.setCellFactory(CheckBoxListCell.forListView(fichier -> {
+            SimpleBooleanProperty propriete = new SimpleBooleanProperty(fichiersCoches.contains(fichier.getId()));
+            propriete.addListener((obs, etaitCoche, estCoche) -> {
+                if (estCoche) {
+                    fichiersCoches.add(fichier.getId());
+                } else {
+                    fichiersCoches.remove(fichier.getId());
+                }
+            });
+            return propriete;
+        }));
+        listeFichiers.getItems().setAll(coursInitial.getFichiers());
+
+        choixCours.setOnAction(e -> {
+            Cours coursChoisi = choixCours.getValue();
+            fichiersCoches.clear();
+            if (coursChoisi != null) {
+                coursChoisi.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
+            }
+            listeFichiers.getItems().setAll(coursChoisi != null ? coursChoisi.getFichiers() : List.of());
+        });
+
+        Button boutonToutCocher = new Button("Tout cocher");
+        boutonToutCocher.setOnAction(e -> {
+            fichiersCoches.clear();
+            listeFichiers.getItems().forEach(f -> fichiersCoches.add(f.getId()));
+            listeFichiers.refresh();
+        });
+        Button boutonToutDecocher = new Button("Tout décocher");
+        boutonToutDecocher.setOnAction(e -> {
+            fichiersCoches.clear();
+            listeFichiers.refresh();
+        });
+        HBox boutonsFichiers = new HBox(8, boutonToutCocher, boutonToutDecocher);
 
         GridPane formulaire = new GridPane();
         formulaire.setHgap(8);
@@ -381,9 +434,13 @@ public class EmploiDuTempsPane extends BorderPane {
         formulaire.addRow(0, new Label("Cours"), choixCours);
         formulaire.addRow(1, new Label("De"), choixDebut);
         formulaire.addRow(2, new Label("À"), choixFin);
+        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 3, 2, 1);
+        formulaire.add(listeFichiers, 0, 4, 2, 1);
+        formulaire.add(boutonsFichiers, 0, 5, 2, 1);
 
         ButtonType boutonValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
         ButtonType boutonSupprimer = new ButtonType("Supprimer", ButtonBar.ButtonData.LEFT);
+        ButtonType boutonOuvrir = new ButtonType("Ouvrir maintenant", ButtonBar.ButtonData.APPLY);
 
         Dialog<ButtonType> dialogue = new Dialog<>();
         dialogue.setTitle(creneauExistant == null ? "Nouveau créneau" : "Modifier le créneau");
@@ -392,7 +449,7 @@ public class EmploiDuTempsPane extends BorderPane {
         if (creneauExistant != null) {
             dialogue.getDialogPane().getButtonTypes().add(boutonSupprimer);
         }
-        dialogue.getDialogPane().getButtonTypes().addAll(boutonValider, ButtonType.CANCEL);
+        dialogue.getDialogPane().getButtonTypes().addAll(boutonOuvrir, boutonValider, ButtonType.CANCEL);
 
         Optional<ButtonType> resultat = dialogue.showAndWait();
         if (resultat.isEmpty() || resultat.get() == ButtonType.CANCEL) {
@@ -418,16 +475,74 @@ public class EmploiDuTempsPane extends BorderPane {
             return;
         }
 
+        List<UUID> idsSelectionnes = coursChoisi.getFichiers().stream()
+                .map(Fichier::getId)
+                .filter(fichiersCoches::contains)
+                .collect(Collectors.toList());
+
+        Creneau creneau;
         if (creneauExistant == null) {
-            emploiDuTemps.ajouterCreneau(jour, debut, fin, coursChoisi.getId());
+            creneau = emploiDuTemps.ajouterCreneau(jour, debut, fin, coursChoisi.getId());
         } else {
-            creneauExistant.setJour(jour);
-            creneauExistant.setHeureDebut(debut);
-            creneauExistant.setHeureFin(fin);
-            creneauExistant.setCoursId(coursChoisi.getId());
+            creneau = creneauExistant;
+            creneau.setJour(jour);
+            creneau.setHeureDebut(debut);
+            creneau.setHeureFin(fin);
+            creneau.setCoursId(coursChoisi.getId());
         }
+        creneau.setFichiersSelectionnesIds(idsSelectionnes);
+
         notifierChangement();
         rafraichir();
+
+        if (resultat.get() == boutonOuvrir) {
+            List<Fichier> fichiersAOuvrir = coursChoisi.getFichiers().stream()
+                    .filter(f -> idsSelectionnes.contains(f.getId()))
+                    .collect(Collectors.toList());
+            ouvrirFichiers(fichiersAOuvrir);
+        }
+    }
+
+    /**
+     * Ouvre les fichiers avec l'application associée du système, en passant par une commande
+     * native ({@code xdg-open}/{@code open}/{@code start}) plutôt que {@code java.awt.Desktop} :
+     * initialiser AWT dans une appli JavaFX sur Linux charge un toolkit GTK concurrent de celui
+     * de JavaFX et fait planter la JVM.
+     */
+    private void ouvrirFichiers(List<Fichier> fichiers) {
+        if (fichiers.isEmpty()) {
+            Alert alerte = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier sélectionné pour ce créneau.");
+            alerte.setTitle("Rien à ouvrir");
+            alerte.setHeaderText(null);
+            alerte.showAndWait();
+            return;
+        }
+        List<String> echecs = new ArrayList<>();
+        for (Fichier fichier : fichiers) {
+            try {
+                new ProcessBuilder(commandeOuverture(fichier.getChemin())).start();
+            } catch (IOException e) {
+                echecs.add(fichier.getNomAffichage() != null ? fichier.getNomAffichage() : fichier.getChemin());
+            }
+        }
+        if (!echecs.isEmpty()) {
+            Alert alerte = new Alert(Alert.AlertType.WARNING,
+                    "Certains fichiers n'ont pas pu être ouverts :\n" + String.join("\n", echecs));
+            alerte.setTitle("Ouverture partielle");
+            alerte.setHeaderText(null);
+            alerte.showAndWait();
+        }
+    }
+
+    private static List<String> commandeOuverture(String chemin) {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("win")) {
+            return List.of("cmd", "/c", "start", "\"\"", chemin);
+        }
+        if (os.contains("mac")) {
+            return List.of("open", chemin);
+        }
+        return List.of("xdg-open", chemin);
     }
 
     private List<LocalTime> genererLimites() {
