@@ -143,7 +143,7 @@ public class CoursGestionPane extends BorderPane {
     }
 
     private void creerCours() {
-        Cours nouveauCours = emploiDuTemps.ajouterCours("Nouveau cours", COULEUR_PAR_DEFAUT);
+        Cours nouveauCours = emploiDuTemps.ajouterCours("Nouveau cours", couleurAleatoire());
         listeCours.getItems().add(nouveauCours);
         listeCours.getSelectionModel().select(nouveauCours);
         champNom.requestFocus();
@@ -256,6 +256,14 @@ public class CoursGestionPane extends BorderPane {
         if (surChangement != null) {
             surChangement.run();
         }
+    }
+
+    private static String couleurAleatoire() {
+        Color couleur = Color.hsb(Math.random() * 360, 0.55, 0.85);
+        return String.format("#%02X%02X%02X",
+                (int) Math.round(couleur.getRed() * 255),
+                (int) Math.round(couleur.getGreen() * 255),
+                (int) Math.round(couleur.getBlue() * 255));
     }
 
     private static class CoursCell extends ListCell<Cours> {
