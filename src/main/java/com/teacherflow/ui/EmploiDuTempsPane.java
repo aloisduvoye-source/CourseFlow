@@ -12,10 +12,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
@@ -23,7 +20,6 @@ import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -38,7 +34,6 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -78,6 +73,17 @@ public class EmploiDuTempsPane extends BorderPane {
     private final ScrollPane defilement = new ScrollPane();
     private double largeurColonneJour = LARGEUR_COLONNE_JOUR_DEFAUT;
 
+    private final VBox panneauCreneau = new VBox(10);
+    private final Label titrePanneau = new Label();
+    private final ComboBox<Cours> choixCoursPanneau = new ComboBox<>();
+    private final ComboBox<LocalTime> choixDebutPanneau = new ComboBox<>();
+    private final ComboBox<LocalTime> choixFinPanneau = new ComboBox<>();
+    private final ListView<Fichier> listeFichiersPanneau = new ListView<>();
+    private final Set<UUID> fichiersCochesPanneau = new LinkedHashSet<>();
+    private final Button boutonSupprimerPanneau = new Button("Supprimer");
+    private Creneau creneauEnEdition;
+    private DayOfWeek jourEnEdition;
+
     public EmploiDuTempsPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
         this.surChangement = surChangement;
@@ -91,7 +97,92 @@ public class EmploiDuTempsPane extends BorderPane {
         VBox.setVgrow(defilement, Priority.ALWAYS);
         setCenter(new VBox(ligneEntetes, defilement));
 
+        construirePanneauCreneau();
         rafraichir();
+    }
+
+    private void construirePanneauCreneau() {
+        Button boutonFermer = new Button();
+        boutonFermer.setGraphic(Icons.fermer());
+        boutonFermer.getStyleClass().add("bouton-icone");
+        boutonFermer.setOnAction(e -> fermerPanneauCreneau());
+
+        titrePanneau.getStyleClass().add("titre-section");
+        Region espaceurTitre = new Region();
+        HBox.setHgrow(espaceurTitre, Priority.ALWAYS);
+        HBox ligneTitre = new HBox(titrePanneau, espaceurTitre, boutonFermer);
+        ligneTitre.setAlignment(Pos.CENTER_LEFT);
+
+        choixCoursPanneau.setMaxWidth(Double.MAX_VALUE);
+        choixDebutPanneau.setMaxWidth(Double.MAX_VALUE);
+        choixFinPanneau.setMaxWidth(Double.MAX_VALUE);
+
+        listeFichiersPanneau.setPrefHeight(180);
+        listeFichiersPanneau.setCellFactory(CheckBoxListCell.forListView(fichier -> {
+            SimpleBooleanProperty propriete = new SimpleBooleanProperty(fichiersCochesPanneau.contains(fichier.getId()));
+            propriete.addListener((obs, etaitCoche, estCoche) -> {
+                if (estCoche) {
+                    fichiersCochesPanneau.add(fichier.getId());
+                } else {
+                    fichiersCochesPanneau.remove(fichier.getId());
+                }
+            });
+            return propriete;
+        }));
+
+        choixCoursPanneau.setOnAction(e -> {
+            Cours coursChoisi = choixCoursPanneau.getValue();
+            fichiersCochesPanneau.clear();
+            if (coursChoisi != null) {
+                coursChoisi.getFichiers().forEach(f -> fichiersCochesPanneau.add(f.getId()));
+            }
+            listeFichiersPanneau.getItems().setAll(coursChoisi != null ? coursChoisi.getFichiers() : List.of());
+        });
+
+        Button boutonToutCocher = new Button("Tout cocher");
+        boutonToutCocher.setOnAction(e -> {
+            fichiersCochesPanneau.clear();
+            listeFichiersPanneau.getItems().forEach(f -> fichiersCochesPanneau.add(f.getId()));
+            listeFichiersPanneau.refresh();
+        });
+        Button boutonToutDecocher = new Button("Tout décocher");
+        boutonToutDecocher.setOnAction(e -> {
+            fichiersCochesPanneau.clear();
+            listeFichiersPanneau.refresh();
+        });
+        HBox boutonsCocher = new HBox(8, boutonToutCocher, boutonToutDecocher);
+
+        Button boutonOuvrir = new Button("Ouvrir maintenant");
+        boutonOuvrir.getStyleClass().add("bouton-secondaire");
+        boutonOuvrir.setMaxWidth(Double.MAX_VALUE);
+        boutonOuvrir.setOnAction(e -> ouvrirFichiersDepuisPanneau());
+
+        Button boutonValider = new Button("Valider");
+        boutonValider.getStyleClass().add("bouton-primaire");
+        boutonValider.setMaxWidth(Double.MAX_VALUE);
+        boutonValider.setOnAction(e -> validerPanneauCreneau());
+
+        boutonSupprimerPanneau.getStyleClass().add("bouton-danger");
+        boutonSupprimerPanneau.setMaxWidth(Double.MAX_VALUE);
+        boutonSupprimerPanneau.setOnAction(e -> supprimerPanneauCreneau());
+
+        panneauCreneau.getChildren().addAll(
+                ligneTitre,
+                titreChamp("Cours"), choixCoursPanneau,
+                titreChamp("De"), choixDebutPanneau,
+                titreChamp("À"), choixFinPanneau,
+                titreChamp("Fichiers à utiliser pour cette séance"),
+                listeFichiersPanneau, boutonsCocher,
+                boutonOuvrir, boutonValider, boutonSupprimerPanneau);
+        panneauCreneau.setPadding(new Insets(16));
+        panneauCreneau.setPrefWidth(300);
+        panneauCreneau.getStyleClass().add("panneau-lateral");
+    }
+
+    private static Label titreChamp(String texte) {
+        Label label = new Label(texte);
+        label.getStyleClass().add("titre-section");
+        return label;
     }
 
     private void mettreAJourEntetes() {
@@ -194,7 +285,7 @@ public class EmploiDuTempsPane extends BorderPane {
             pane.getChildren().add(separateur);
         }
 
-        pane.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jourDepuisX(e.getX()), heureDepuisY(e.getY())));
+        pane.setOnMouseClicked(e -> ouvrirPanneauCreneau(null, jourDepuisX(e.getX()), heureDepuisY(e.getY())));
 
         emploiDuTemps.getCreneaux().stream()
                 .filter(c -> indexDuJour(c.getJour()) >= 0)
@@ -349,7 +440,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
         private void surRelachement(MouseEvent e) {
             if (!enTrainDeBouger) {
-                ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut());
+                ouvrirPanneauCreneau(creneau, creneau.getJour(), creneau.getHeureDebut());
                 e.consume();
                 return;
             }
@@ -364,7 +455,7 @@ public class EmploiDuTempsPane extends BorderPane {
         }
     }
 
-    private void ouvrirDialogueCreneau(Creneau creneauExistant, DayOfWeek jour, LocalTime heureDebutParDefaut) {
+    private void ouvrirPanneauCreneau(Creneau creneauExistant, DayOfWeek jour, LocalTime heureDebutParDefaut) {
         if (emploiDuTemps.getCours().isEmpty()) {
             Alert alerte = new Alert(Alert.AlertType.INFORMATION,
                     "Crée d'abord un cours dans l'onglet \"Cours\" avant de remplir l'emploi du temps.");
@@ -375,116 +466,55 @@ public class EmploiDuTempsPane extends BorderPane {
             return;
         }
 
+        creneauEnEdition = creneauExistant;
+        jourEnEdition = jour;
+        titrePanneau.setText((creneauExistant == null ? "Nouveau créneau — " : "Modifier — ") + nomJour(jour));
+        boutonSupprimerPanneau.setVisible(creneauExistant != null);
+        boutonSupprimerPanneau.setManaged(creneauExistant != null);
+
         List<LocalTime> limites = genererLimites();
         List<LocalTime> optionsDebut = limites.subList(0, limites.size() - 1);
         List<LocalTime> optionsFin = limites.subList(1, limites.size());
+        choixDebutPanneau.getItems().setAll(optionsDebut);
+        choixFinPanneau.getItems().setAll(optionsFin);
+        choixCoursPanneau.getItems().setAll(emploiDuTemps.getCours());
 
-        ComboBox<Cours> choixCours = new ComboBox<>();
-        choixCours.getItems().addAll(emploiDuTemps.getCours());
-        ComboBox<LocalTime> choixDebut = new ComboBox<>();
-        choixDebut.getItems().addAll(optionsDebut);
-        ComboBox<LocalTime> choixFin = new ComboBox<>();
-        choixFin.getItems().addAll(optionsFin);
-
-        Set<UUID> fichiersCoches = new LinkedHashSet<>();
         Cours coursInitial;
+        fichiersCochesPanneau.clear();
         if (creneauExistant != null) {
             coursInitial = emploiDuTemps.trouverCours(creneauExistant.getCoursId())
                     .orElse(emploiDuTemps.getCours().get(0));
-            fichiersCoches.addAll(creneauExistant.getFichiersSelectionnesIds());
-            choixDebut.setValue(creneauExistant.getHeureDebut());
-            choixFin.setValue(creneauExistant.getHeureFin());
+            fichiersCochesPanneau.addAll(creneauExistant.getFichiersSelectionnesIds());
+            choixDebutPanneau.setValue(creneauExistant.getHeureDebut());
+            choixFinPanneau.setValue(creneauExistant.getHeureFin());
         } else {
             coursInitial = emploiDuTemps.getCours().get(0);
-            coursInitial.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
-            choixDebut.setValue(heureDebutParDefaut);
+            coursInitial.getFichiers().forEach(f -> fichiersCochesPanneau.add(f.getId()));
+            choixDebutPanneau.setValue(heureDebutParDefaut);
             LocalTime finParDefaut = heureDebutParDefaut.plusHours(1);
-            choixFin.setValue(optionsFin.contains(finParDefaut)
+            choixFinPanneau.setValue(optionsFin.contains(finParDefaut)
                     ? finParDefaut : optionsFin.get(optionsFin.size() - 1));
         }
-        choixCours.setValue(coursInitial);
+        choixCoursPanneau.setValue(coursInitial);
+        listeFichiersPanneau.getItems().setAll(coursInitial.getFichiers());
+        listeFichiersPanneau.refresh();
 
-        ListView<Fichier> listeFichiers = new ListView<>();
-        listeFichiers.setPrefHeight(140);
-        listeFichiers.setCellFactory(CheckBoxListCell.forListView(fichier -> {
-            SimpleBooleanProperty propriete = new SimpleBooleanProperty(fichiersCoches.contains(fichier.getId()));
-            propriete.addListener((obs, etaitCoche, estCoche) -> {
-                if (estCoche) {
-                    fichiersCoches.add(fichier.getId());
-                } else {
-                    fichiersCoches.remove(fichier.getId());
-                }
-            });
-            return propriete;
-        }));
-        listeFichiers.getItems().setAll(coursInitial.getFichiers());
+        setRight(panneauCreneau);
+    }
 
-        choixCours.setOnAction(e -> {
-            Cours coursChoisi = choixCours.getValue();
-            fichiersCoches.clear();
-            if (coursChoisi != null) {
-                coursChoisi.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
-            }
-            listeFichiers.getItems().setAll(coursChoisi != null ? coursChoisi.getFichiers() : List.of());
-        });
+    private void fermerPanneauCreneau() {
+        setRight(null);
+        creneauEnEdition = null;
+    }
 
-        Button boutonToutCocher = new Button("Tout cocher");
-        boutonToutCocher.setOnAction(e -> {
-            fichiersCoches.clear();
-            listeFichiers.getItems().forEach(f -> fichiersCoches.add(f.getId()));
-            listeFichiers.refresh();
-        });
-        Button boutonToutDecocher = new Button("Tout décocher");
-        boutonToutDecocher.setOnAction(e -> {
-            fichiersCoches.clear();
-            listeFichiers.refresh();
-        });
-        HBox boutonsFichiers = new HBox(8, boutonToutCocher, boutonToutDecocher);
-
-        GridPane formulaire = new GridPane();
-        formulaire.setHgap(8);
-        formulaire.setVgap(8);
-        formulaire.addRow(0, new Label("Cours"), choixCours);
-        formulaire.addRow(1, new Label("De"), choixDebut);
-        formulaire.addRow(2, new Label("À"), choixFin);
-        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 3, 2, 1);
-        formulaire.add(listeFichiers, 0, 4, 2, 1);
-        formulaire.add(boutonsFichiers, 0, 5, 2, 1);
-
-        ButtonType boutonValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
-        ButtonType boutonSupprimer = new ButtonType("Supprimer", ButtonBar.ButtonData.LEFT);
-        ButtonType boutonOuvrir = new ButtonType("Ouvrir maintenant", ButtonBar.ButtonData.APPLY);
-
-        Dialog<ButtonType> dialogue = new Dialog<>();
-        dialogue.setTitle(creneauExistant == null ? "Nouveau créneau" : "Modifier le créneau");
-        dialogue.setHeaderText(nomJour(jour));
-        dialogue.getDialogPane().setContent(formulaire);
-        if (creneauExistant != null) {
-            dialogue.getDialogPane().getButtonTypes().add(boutonSupprimer);
-        }
-        dialogue.getDialogPane().getButtonTypes().addAll(boutonOuvrir, boutonValider, ButtonType.CANCEL);
-        Styles.appliquer(dialogue);
-        dialogue.getDialogPane().lookupButton(boutonValider).getStyleClass().add("bouton-primaire");
-        dialogue.getDialogPane().lookupButton(boutonOuvrir).getStyleClass().add("bouton-secondaire");
-        if (creneauExistant != null) {
-            dialogue.getDialogPane().lookupButton(boutonSupprimer).getStyleClass().add("bouton-danger");
-        }
-
-        Optional<ButtonType> resultat = dialogue.showAndWait();
-        if (resultat.isEmpty() || resultat.get() == ButtonType.CANCEL) {
-            return;
-        }
-
-        if (resultat.get() == boutonSupprimer) {
-            emploiDuTemps.supprimerCreneau(creneauExistant.getId());
-            notifierChangement();
-            rafraichir();
-            return;
-        }
-
-        Cours coursChoisi = choixCours.getValue();
-        LocalTime debut = choixDebut.getValue();
-        LocalTime fin = choixFin.getValue();
+    /**
+     * Valide le formulaire du panneau et enregistre le créneau (création ou mise à jour).
+     * @return le créneau enregistré, ou {@code null} si le formulaire est invalide.
+     */
+    private Creneau enregistrerPanneau() {
+        Cours coursChoisi = choixCoursPanneau.getValue();
+        LocalTime debut = choixDebutPanneau.getValue();
+        LocalTime fin = choixFinPanneau.getValue();
         if (coursChoisi == null || debut == null || fin == null || !fin.isAfter(debut)) {
             Alert erreur = new Alert(Alert.AlertType.ERROR,
                     "Choisis un cours et une plage horaire valide (fin après le début).");
@@ -492,35 +522,56 @@ public class EmploiDuTempsPane extends BorderPane {
             erreur.setHeaderText(null);
             Styles.appliquer(erreur);
             erreur.showAndWait();
-            return;
+            return null;
         }
 
         List<UUID> idsSelectionnes = coursChoisi.getFichiers().stream()
                 .map(Fichier::getId)
-                .filter(fichiersCoches::contains)
+                .filter(fichiersCochesPanneau::contains)
                 .collect(Collectors.toList());
 
         Creneau creneau;
-        if (creneauExistant == null) {
-            creneau = emploiDuTemps.ajouterCreneau(jour, debut, fin, coursChoisi.getId());
+        if (creneauEnEdition == null) {
+            creneau = emploiDuTemps.ajouterCreneau(jourEnEdition, debut, fin, coursChoisi.getId());
         } else {
-            creneau = creneauExistant;
-            creneau.setJour(jour);
+            creneau = creneauEnEdition;
+            creneau.setJour(jourEnEdition);
             creneau.setHeureDebut(debut);
             creneau.setHeureFin(fin);
             creneau.setCoursId(coursChoisi.getId());
         }
         creneau.setFichiersSelectionnesIds(idsSelectionnes);
-
         notifierChangement();
-        rafraichir();
+        return creneau;
+    }
 
-        if (resultat.get() == boutonOuvrir) {
-            List<Fichier> fichiersAOuvrir = coursChoisi.getFichiers().stream()
-                    .filter(f -> idsSelectionnes.contains(f.getId()))
-                    .collect(Collectors.toList());
-            ouvrirFichiers(fichiersAOuvrir);
+    private void validerPanneauCreneau() {
+        if (enregistrerPanneau() == null) {
+            return;
         }
+        fermerPanneauCreneau();
+        rafraichir();
+    }
+
+    private void supprimerPanneauCreneau() {
+        if (creneauEnEdition == null) {
+            return;
+        }
+        emploiDuTemps.supprimerCreneau(creneauEnEdition.getId());
+        notifierChangement();
+        fermerPanneauCreneau();
+        rafraichir();
+    }
+
+    private void ouvrirFichiersDepuisPanneau() {
+        Creneau creneau = enregistrerPanneau();
+        if (creneau == null) {
+            return;
+        }
+        List<Fichier> fichiersAOuvrir = emploiDuTemps.fichiersPourCreneau(creneau);
+        fermerPanneauCreneau();
+        rafraichir();
+        ouvrirFichiers(fichiersAOuvrir);
     }
 
     /**

@@ -118,6 +118,19 @@
 .bouton-icone:hover .icone-poubelle {
     -fx-fill: -fx-warm-danger;
 }
+.icone-fermer {
+    -fx-fill: -fx-warm-text-muted;
+}
+.bouton-icone:hover .icone-fermer {
+    -fx-fill: -fx-warm-text;
+}
+
+/* --- Panneau latéral (édition d'un créneau) --- */
+.panneau-lateral {
+    -fx-background-color: -fx-warm-panel;
+    -fx-border-color: -fx-warm-border;
+    -fx-border-width: 0 0 0 1;
+}
 
 /* --- Listes --- */
 .list-view {
