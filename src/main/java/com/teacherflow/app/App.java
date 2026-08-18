@@ -76,6 +76,7 @@ public class App extends Application {
         stage.setScene(scene);
         stage.setTitle("TeacherFlow");
         stage.setOnCloseRequest(e -> sauvegarder());
+        stage.setMaximized(true);
         stage.show();
     }
 

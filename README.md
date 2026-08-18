@@ -95,6 +95,13 @@ lecture -n -l                        # liste les fichiers du créneau suivant
 lecture .                            # lance l'application graphique (comme "code .")
 lecture --help                       # liste toutes les options (aussi -h)
 ```
+
+### Générer des données de test
+Pour explorer l'interface sans tout créer à la main :
+```
+bin/donnees-test
+```
+Génère 7 cours réalistes (niveau + matière, couleur aléatoire, 2-4 fichiers chacun) et 18 créneaux répartis sur la semaine, dans `~/.teacherflow/data.json`. Les fichiers factices sont créés dans [test/](test/) (texte brut). Les données existantes sont sauvegardées en `.bak` avant d'être remplacées.
 Le script lance `java` directement (module-path + classpath mis en cache dans `target/lecture-classpath.txt` lors du premier appel, régénéré si `pom.xml` change) plutôt que de repasser par `mvn javafx:run` à chaque fois — ~0,3 s par appel au lieu de ~1,4 s, Maven n'ayant plus à se réinitialiser. Seul `lecture .` (lancement de l'appli graphique) passe encore par `mvn javafx:run`, sans impact puisqu'il n'est pas sur le chemin critique d'usage répété. Pas besoin de builder un jar séparément pour l'instant (voir Phase 8 pour un vrai exécutable packagé).
 
 ## État actuel du projet
@@ -104,7 +111,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille des 7 jours (7h-20h), créer/modifier/supprimer un créneau via une boîte de dialogue, rendu coloré par cours. Un créneau placé peut être glissé à la souris (déplacement libre entre jours et horaires, par pas de 10 min) et redimensionné en tirant son bord haut/bas. La largeur des colonnes s'adapte à la largeur de la fenêtre. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
 - **Sélection de fichiers par créneau (UI)** ✅ — dans la boîte de dialogue d'un créneau : liste à cocher des fichiers du Cours associé (tout coché par défaut à la création), boutons "Tout cocher"/"Tout décocher", et bouton "Ouvrir maintenant" qui ouvre les fichiers cochés sans passer par le terminal. Testé manuellement dans l'application.
 - **Commande `lecture` (CLI)** ✅ — [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](src/main/java/com/teacherflow/cli/ArgumentsLecture.java) + [NavigationCreneaux](src/main/java/com/teacherflow/cli/NavigationCreneaux.java) (testés unitairement) : créneau courant, liste du jour (`--jour` seul), créneau précédent/suivant (`-p`/`-n`, avec avertissement si le créneau résolu tombe un autre jour que celui demandé), liste des fichiers sans les ouvrir (`-l`), et lancement de l'appli graphique (`lecture .`) — ouvre les fichiers via la logique partagée [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java). Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
-- **Design UI** : palette sobre et professionnelle ([teacherflow.css](src/main/resources/css/teacherflow.css)), navigation verticale, boîtes de dialogue pour l'édition des créneaux.
+- **Design UI** : palette sobre et professionnelle ([teacherflow.css](src/main/resources/css/teacherflow.css)), navigation verticale, boîtes de dialogue pour l'édition des créneaux, fenêtre maximisée au lancement.
 - **Reste à construire** : confort/robustesse, fonctionnalités avancées et packaging natif (Phases 6-8, optionnelles).
 
 ## Roadmap
