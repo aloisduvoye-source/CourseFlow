@@ -72,6 +72,36 @@ class ArgumentsLectureTest {
     }
 
     @Test
+    void parDefautNeListePasLesFichiers() {
+        ArgumentsLecture arguments = ArgumentsLecture.analyser(
+                new String[0], DayOfWeek.MONDAY, LocalTime.of(8, 0));
+
+        assertEquals(false, arguments.isListerFichiers());
+    }
+
+    @Test
+    void optionLActiveLeListageDesFichiers() {
+        ArgumentsLecture arguments = ArgumentsLecture.analyser(
+                new String[]{"-l"}, DayOfWeek.MONDAY, LocalTime.of(8, 0));
+
+        assertEquals(true, arguments.isListerFichiers());
+        assertEquals(ArgumentsLecture.Mode.CRENEAU_COURANT, arguments.getMode());
+    }
+
+    @Test
+    void optionLSeCombineAvecPEtN() {
+        ArgumentsLecture avecP = ArgumentsLecture.analyser(
+                new String[]{"-p", "-l"}, DayOfWeek.MONDAY, LocalTime.of(8, 0));
+        assertEquals(ArgumentsLecture.Mode.PRECEDENT, avecP.getMode());
+        assertEquals(true, avecP.isListerFichiers());
+
+        ArgumentsLecture avecN = ArgumentsLecture.analyser(
+                new String[]{"-n", "-l"}, DayOfWeek.MONDAY, LocalTime.of(8, 0));
+        assertEquals(ArgumentsLecture.Mode.SUIVANT, avecN.getMode());
+        assertEquals(true, avecN.isListerFichiers());
+    }
+
+    @Test
     void jourInconnuLeveUneErreur() {
         assertThrows(IllegalArgumentException.class, () ->
                 ArgumentsLecture.analyser(new String[]{"--jour", "Bricoledi"}, DayOfWeek.MONDAY, LocalTime.of(8, 0)));

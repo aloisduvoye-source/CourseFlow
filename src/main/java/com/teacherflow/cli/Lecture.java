@@ -20,7 +20,8 @@ import java.util.stream.Collectors;
 /**
  * Point d'entrée CLI headless (sans interface graphique) : ouvre les fichiers du créneau
  * courant, du créneau ciblé via {@code --jour}/{@code --heure}, ou du créneau précédent/suivant
- * via {@code -p}/{@code -n}. {@code --jour} seul (sans {@code --heure}) liste les créneaux du jour.
+ * via {@code -p}/{@code -n}. {@code --jour} seul (sans {@code --heure}) liste les créneaux du
+ * jour. {@code -l} liste les fichiers du créneau résolu au lieu de les ouvrir.
  */
 public final class Lecture {
 
@@ -33,7 +34,7 @@ public final class Lecture {
             arguments = ArgumentsLecture.analyser(args, LocalDate.now().getDayOfWeek(), LocalTime.now());
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
-            System.err.println("Usage : lecture [--jour <Lundi|Mardi|...>] [--heure HH:mm] [-p | -n]");
+            System.err.println("Usage : lecture [--jour <Lundi|Mardi|...>] [--heure HH:mm] [-p | -n] [-l]");
             System.exit(2);
             return;
         }
@@ -51,9 +52,9 @@ public final class Lecture {
 
         switch (arguments.getMode()) {
             case LISTE_JOUR -> listerCreneauxDuJour(emploiDuTemps, arguments.getJour());
-            case SUIVANT -> ouvrirCreneauRelatif(emploiDuTemps, arguments, true);
-            case PRECEDENT -> ouvrirCreneauRelatif(emploiDuTemps, arguments, false);
-            case CRENEAU_COURANT -> ouvrirCreneauCourant(emploiDuTemps, arguments);
+            case SUIVANT -> traiterCreneauRelatif(emploiDuTemps, arguments, true);
+            case PRECEDENT -> traiterCreneauRelatif(emploiDuTemps, arguments, false);
+            case CRENEAU_COURANT -> traiterCreneauCourant(emploiDuTemps, arguments);
         }
     }
 
@@ -75,26 +76,57 @@ public final class Lecture {
         }
     }
 
-    private static void ouvrirCreneauCourant(EmploiDuTemps emploiDuTemps, ArgumentsLecture arguments) {
+    private static void traiterCreneauCourant(EmploiDuTemps emploiDuTemps, ArgumentsLecture arguments) {
         Optional<Creneau> creneauCourant = emploiDuTemps.trouverCreneauCourant(arguments.getJour(), arguments.getHeure());
         if (creneauCourant.isEmpty()) {
             System.out.println("Aucun créneau prévu " + NomsJours.nom(arguments.getJour())
                     + " à " + arguments.getHeure() + ".");
             return;
         }
-        ouvrirCreneau(emploiDuTemps, creneauCourant.get());
+        traiterCreneau(emploiDuTemps, creneauCourant.get(), arguments.isListerFichiers());
     }
 
-    private static void ouvrirCreneauRelatif(EmploiDuTemps emploiDuTemps, ArgumentsLecture arguments, boolean suivant) {
-        Optional<Creneau> creneau = suivant
+    private static void traiterCreneauRelatif(EmploiDuTemps emploiDuTemps, ArgumentsLecture arguments, boolean suivant) {
+        Optional<Creneau> creneauOpt = suivant
                 ? NavigationCreneaux.suivant(emploiDuTemps.getCreneaux(), arguments.getJour(), arguments.getHeure())
                 : NavigationCreneaux.precedent(emploiDuTemps.getCreneaux(), arguments.getJour(), arguments.getHeure());
 
-        if (creneau.isEmpty()) {
+        if (creneauOpt.isEmpty()) {
             System.out.println("Aucun créneau dans l'emploi du temps.");
             return;
         }
-        ouvrirCreneau(emploiDuTemps, creneau.get());
+
+        Creneau creneau = creneauOpt.get();
+        if (creneau.getJour() != arguments.getJour()) {
+            System.out.println("Remarque : ce créneau a lieu " + NomsJours.nom(creneau.getJour())
+                    + " (le jour demandé était " + NomsJours.nom(arguments.getJour()) + ").");
+        }
+        traiterCreneau(emploiDuTemps, creneau, arguments.isListerFichiers());
+    }
+
+    private static void traiterCreneau(EmploiDuTemps emploiDuTemps, Creneau creneau, boolean listerSeulement) {
+        if (listerSeulement) {
+            listerFichiersCreneau(emploiDuTemps, creneau);
+        } else {
+            ouvrirCreneau(emploiDuTemps, creneau);
+        }
+    }
+
+    private static void listerFichiersCreneau(EmploiDuTemps emploiDuTemps, Creneau creneau) {
+        String nomCours = nomCours(emploiDuTemps, creneau);
+        List<Fichier> fichiers = emploiDuTemps.fichiersPourCreneau(creneau);
+
+        System.out.println("Fichiers pour \"" + nomCours + "\" (" + NomsJours.nom(creneau.getJour())
+                + " " + creneau.getHeureDebut() + "-" + creneau.getHeureFin() + ") :");
+        if (fichiers.isEmpty()) {
+            System.out.println("  (aucun fichier sélectionné pour ce créneau)");
+            return;
+        }
+        for (Fichier fichier : fichiers) {
+            String libelle = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
+                    ? fichier.getNomAffichage() : fichier.getChemin();
+            System.out.println("  " + libelle);
+        }
     }
 
     private static void ouvrirCreneau(EmploiDuTemps emploiDuTemps, Creneau creneau) {

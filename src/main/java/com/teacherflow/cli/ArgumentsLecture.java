@@ -9,8 +9,9 @@ import java.time.format.DateTimeParseException;
 /**
  * Analyse des arguments de la commande {@code lecture} : {@code --jour <nom>} et/ou
  * {@code --heure HH:mm} pour cibler un autre créneau, {@code -p}/{@code -n} pour naviguer
- * vers le créneau précédent/suivant. Donner {@code --jour} sans {@code --heure} bascule en
- * mode "liste des créneaux du jour" plutôt que de chercher un créneau précis.
+ * vers le créneau précédent/suivant, {@code -l} pour lister les fichiers du créneau résolu
+ * au lieu de les ouvrir. Donner {@code --jour} sans {@code --heure} bascule en mode "liste
+ * des créneaux du jour" plutôt que de chercher un créneau précis.
  */
 public final class ArgumentsLecture {
 
@@ -19,11 +20,13 @@ public final class ArgumentsLecture {
     private final DayOfWeek jour;
     private final LocalTime heure;
     private final Mode mode;
+    private final boolean listerFichiers;
 
-    private ArgumentsLecture(DayOfWeek jour, LocalTime heure, Mode mode) {
+    private ArgumentsLecture(DayOfWeek jour, LocalTime heure, Mode mode, boolean listerFichiers) {
         this.jour = jour;
         this.heure = heure;
         this.mode = mode;
+        this.listerFichiers = listerFichiers;
     }
 
     public DayOfWeek getJour() {
@@ -38,6 +41,10 @@ public final class ArgumentsLecture {
         return mode;
     }
 
+    public boolean isListerFichiers() {
+        return listerFichiers;
+    }
+
     public static ArgumentsLecture analyser(String[] args, DayOfWeek jourParDefaut, LocalTime heureParDefaut) {
         DayOfWeek jour = jourParDefaut;
         LocalTime heure = heureParDefaut;
@@ -45,6 +52,7 @@ public final class ArgumentsLecture {
         boolean heureSpecifiee = false;
         boolean precedent = false;
         boolean suivant = false;
+        boolean listerFichiers = false;
 
         int i = 0;
         while (i < args.length) {
@@ -77,6 +85,10 @@ public final class ArgumentsLecture {
                     suivant = true;
                     i += 1;
                 }
+                case "-l" -> {
+                    listerFichiers = true;
+                    i += 1;
+                }
                 default -> throw new IllegalArgumentException("Option inconnue : \"" + option + "\".");
             }
         }
@@ -96,7 +108,7 @@ public final class ArgumentsLecture {
             mode = Mode.CRENEAU_COURANT;
         }
 
-        return new ArgumentsLecture(jour, heure, mode);
+        return new ArgumentsLecture(jour, heure, mode, listerFichiers);
     }
 
     private static String valeurSuivante(String[] args, int index, String option) {
