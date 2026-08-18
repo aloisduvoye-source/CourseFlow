@@ -3,170 +3,343 @@ package com.teacherflow.ui;
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
+import javafx.event.Event;
+import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
-import javafx.scene.Node;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.RowConstraints;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * Grille hebdomadaire (jours × heures) permettant d'assigner un {@link Cours} à chaque
- * {@link Creneau}, de les modifier ou de les supprimer.
+ * {@link Creneau}, puis de le déplacer ou de le redimensionner directement à la souris
+ * (par pas de {@value PAS_SNAP_MINUTES} minutes), ou de le modifier/supprimer via une
+ * boîte de dialogue.
  */
 public class EmploiDuTempsPane extends BorderPane {
 
-    private static final LocalTime HEURE_DEBUT_GRILLE = LocalTime.of(8, 0);
-    private static final LocalTime HEURE_FIN_GRILLE = LocalTime.of(19, 0);
-    private static final int PAS_MINUTES = 30;
-    private static final double HAUTEUR_LIGNE = 26;
+    private static final LocalTime HEURE_DEBUT_GRILLE = LocalTime.of(7, 0);
+    private static final LocalTime HEURE_FIN_GRILLE = LocalTime.of(20, 0);
+    private static final int PAS_SNAP_MINUTES = 10;
+    private static final int PAS_AFFICHAGE_MINUTES = 30;
+    private static final int DUREE_MIN_MINUTES = 10;
+    private static final double PIXELS_PAR_MINUTE = 1.5;
+    private static final double LARGEUR_COLONNE_HEURES = 60;
+    private static final double LARGEUR_COLONNE_JOUR_MIN = 110;
+    private static final double LARGEUR_COLONNE_JOUR_DEFAUT = 140;
+    private static final double HAUTEUR_POIGNEE = 6;
+    private static final double SEUIL_CLIC_PIXELS = 4;
+    private static final double MARGE_VERTICALE = 10;
+
     private static final DayOfWeek[] JOURS_AFFICHES = {
-            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
-            DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY
+            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
+            DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
     };
+
+    private enum ModeInteraction { DEPLACER, REDIMENSIONNER_HAUT, REDIMENSIONNER_BAS }
 
     private final EmploiDuTemps emploiDuTemps;
     private final Runnable surChangement;
-    private final GridPane grille = new GridPane();
+    private final HBox ligneEntetes = new HBox();
+    private final HBox ligneColonnes = new HBox();
+    private final ScrollPane defilement = new ScrollPane();
+    private double largeurColonneJour = LARGEUR_COLONNE_JOUR_DEFAUT;
 
     public EmploiDuTempsPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
         this.surChangement = surChangement;
 
         setPadding(new Insets(12));
-        ScrollPane defilement = new ScrollPane(grille);
-        defilement.setFitToWidth(true);
-        setCenter(defilement);
+
+        defilement.setContent(ligneColonnes);
+        defilement.setFitToWidth(false);
+        defilement.viewportBoundsProperty().addListener((obs, ancien, nouveau) -> rafraichir());
+
+        VBox.setVgrow(defilement, Priority.ALWAYS);
+        setCenter(new VBox(ligneEntetes, defilement));
 
         rafraichir();
     }
 
+    private void mettreAJourEntetes() {
+        ligneEntetes.getChildren().clear();
+        ligneEntetes.getChildren().add(espace(LARGEUR_COLONNE_HEURES));
+        for (DayOfWeek jour : JOURS_AFFICHES) {
+            Label enTete = new Label(nomJour(jour));
+            enTete.setPrefWidth(largeurColonneJour);
+            enTete.setAlignment(Pos.CENTER);
+            enTete.setStyle("-fx-font-weight: bold;");
+            ligneEntetes.getChildren().add(enTete);
+        }
+    }
+
+    private static Region espace(double largeur) {
+        Region region = new Region();
+        region.setPrefWidth(largeur);
+        return region;
+    }
+
     /**
-     * Reconstruit entièrement la grille à partir de l'état courant de l'{@link EmploiDuTemps}.
-     * À appeler après toute modification faite ailleurs (ex. suppression d'un cours).
+     * Reconstruit entièrement la grille à partir de l'état courant de l'{@link EmploiDuTemps},
+     * en recalculant au passage la largeur des colonnes pour occuper toute la largeur
+     * disponible du panneau (avec un minimum lisible, au-delà duquel un défilement horizontal
+     * prend le relais).
      */
     public void rafraichir() {
-        grille.getChildren().clear();
-        grille.getColumnConstraints().clear();
-        grille.getRowConstraints().clear();
+        largeurColonneJour = calculerLargeurColonneJour();
+        mettreAJourEntetes();
 
-        List<LocalTime> limites = genererLimites();
-        int nbLignes = limites.size() - 1;
+        ligneColonnes.getChildren().clear();
 
-        ColumnConstraints colonneHeures = new ColumnConstraints(60);
-        grille.getColumnConstraints().add(colonneHeures);
+        double hauteurGrille = minutesGrille() * PIXELS_PAR_MINUTE + 2 * MARGE_VERTICALE;
+
+        ligneColonnes.getChildren().add(construireColonneHeures(hauteurGrille));
+        ligneColonnes.getChildren().add(construireGrilleUnique(hauteurGrille));
+    }
+
+    private double calculerLargeurColonneJour() {
+        Bounds viewport = defilement.getViewportBounds();
+        double largeurDisponible = viewport != null ? viewport.getWidth() : 0;
+        if (largeurDisponible <= 0) {
+            return LARGEUR_COLONNE_JOUR_DEFAUT;
+        }
+        double largeurJours = largeurDisponible - LARGEUR_COLONNE_HEURES;
+        return Math.max(LARGEUR_COLONNE_JOUR_MIN, largeurJours / JOURS_AFFICHES.length);
+    }
+
+    private Pane construireColonneHeures(double hauteur) {
+        Pane pane = new Pane();
+        pane.setPrefSize(LARGEUR_COLONNE_HEURES, hauteur);
+        for (int minute = 0; minute <= minutesGrille(); minute += PAS_AFFICHAGE_MINUTES) {
+            LocalTime heure = HEURE_DEBUT_GRILLE.plusMinutes(minute);
+            if (heure.getMinute() == 0) {
+                Label label = new Label(heure.toString());
+                label.setStyle("-fx-text-fill: gray; -fx-font-size: 10;");
+                label.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE - 6);
+                label.setLayoutX(4);
+                pane.getChildren().add(label);
+            }
+        }
+        return pane;
+    }
+
+    /**
+     * Zone de dessin unique regroupant les 6 jours affichés, plutôt qu'un panneau par jour :
+     * cela permet à un {@link BlocCreneau} de se déplacer librement en X (jour) et pas
+     * seulement en Y (heure) lors d'un glisser.
+     */
+    private Pane construireGrilleUnique(double hauteur) {
+        double largeurTotale = JOURS_AFFICHES.length * largeurColonneJour;
+        Pane pane = new Pane();
+        pane.setPrefSize(largeurTotale, hauteur);
+        pane.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 0 1;");
+
+        for (int minute = 0; minute <= minutesGrille(); minute += PAS_AFFICHAGE_MINUTES) {
+            Region ligne = new Region();
+            ligne.setPrefSize(largeurTotale, 1);
+            ligne.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE);
+            ligne.setStyle("-fx-background-color: #eeeeee;");
+            ligne.setMouseTransparent(true);
+            pane.getChildren().add(ligne);
+        }
+        for (int i = 1; i < JOURS_AFFICHES.length; i++) {
+            Region separateur = new Region();
+            separateur.setPrefSize(1, hauteur);
+            separateur.setLayoutX(i * largeurColonneJour);
+            separateur.setStyle("-fx-background-color: #e0e0e0;");
+            separateur.setMouseTransparent(true);
+            pane.getChildren().add(separateur);
+        }
+
+        pane.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jourDepuisX(e.getX()), heureDepuisY(e.getY())));
+
+        emploiDuTemps.getCreneaux().stream()
+                .filter(c -> indexDuJour(c.getJour()) >= 0)
+                .forEach(c -> pane.getChildren().add(new BlocCreneau(c)));
+
+        return pane;
+    }
+
+    private LocalTime heureDepuisY(double y) {
+        long pas = Math.round(((y - MARGE_VERTICALE) / PIXELS_PAR_MINUTE) / PAS_SNAP_MINUTES);
+        int minutes = clamp((int) (pas * PAS_SNAP_MINUTES), 0, minutesGrille() - DUREE_MIN_MINUTES);
+        return HEURE_DEBUT_GRILLE.plusMinutes(minutes);
+    }
+
+    private DayOfWeek jourDepuisX(double x) {
+        int index = clamp((int) (x / largeurColonneJour), 0, JOURS_AFFICHES.length - 1);
+        return JOURS_AFFICHES[index];
+    }
+
+    private int minutesGrille() {
+        return (int) Duration.between(HEURE_DEBUT_GRILLE, HEURE_FIN_GRILLE).toMinutes();
+    }
+
+    private static int indexDuJour(DayOfWeek jour) {
         for (int i = 0; i < JOURS_AFFICHES.length; i++) {
-            ColumnConstraints colonne = new ColumnConstraints();
-            colonne.setPercentWidth(100.0 / JOURS_AFFICHES.length);
-            colonne.setHgrow(Priority.ALWAYS);
-            grille.getColumnConstraints().add(colonne);
-        }
-
-        grille.getRowConstraints().add(new RowConstraints(30));
-        for (int r = 0; r < nbLignes; r++) {
-            grille.getRowConstraints().add(new RowConstraints(HAUTEUR_LIGNE));
-        }
-
-        grille.add(new Label(""), 0, 0);
-        for (int i = 0; i < JOURS_AFFICHES.length; i++) {
-            Label enTete = new Label(nomJour(JOURS_AFFICHES[i]));
-            enTete.setStyle("-fx-font-weight: bold;");
-            enTete.setMaxWidth(Double.MAX_VALUE);
-            enTete.setAlignment(Pos.CENTER);
-            grille.add(enTete, i + 1, 0);
-        }
-
-        for (int r = 0; r < nbLignes; r++) {
-            LocalTime debutLigne = limites.get(r);
-            if (debutLigne.getMinute() == 0) {
-                Label labelHeure = new Label(debutLigne.toString());
-                labelHeure.setStyle("-fx-text-fill: gray; -fx-font-size: 10;");
-                grille.add(labelHeure, 0, r + 1);
+            if (JOURS_AFFICHES[i] == jour) {
+                return i;
             }
         }
-
-        for (int jourIndex = 0; jourIndex < JOURS_AFFICHES.length; jourIndex++) {
-            construireColonneJour(JOURS_AFFICHES[jourIndex], jourIndex, nbLignes, limites);
-        }
+        return -1;
     }
 
-    private void construireColonneJour(DayOfWeek jour, int jourIndex, int nbLignes, List<LocalTime> limites) {
-        boolean[] occupe = new boolean[nbLignes];
+    /**
+     * Un créneau affiché dans la grille : déplaçable (glisser le corps) et redimensionnable
+     * (glisser le bord haut ou bas), par pas de {@link #PAS_SNAP_MINUTES} minutes. Un clic
+     * sans déplacement ouvre la boîte de dialogue d'édition.
+     */
+    private final class BlocCreneau extends StackPane {
 
-        List<Creneau> creneauxDuJour = emploiDuTemps.getCreneaux().stream()
-                .filter(c -> c.getJour() == jour)
-                .sorted(Comparator.comparing(Creneau::getHeureDebut))
-                .toList();
+        private final Creneau creneau;
+        private final Label libelle = new Label();
 
-        for (Creneau creneau : creneauxDuJour) {
-            int ligneDebut = Math.max(0, indexLigne(creneau.getHeureDebut()));
-            int ligneFin = Math.min(nbLignes, indexLigne(creneau.getHeureFin()));
-            if (ligneDebut >= nbLignes || ligneFin <= ligneDebut) {
-                continue;
-            }
-            int span = ligneFin - ligneDebut;
-            for (int r = ligneDebut; r < ligneFin; r++) {
-                occupe[r] = true;
-            }
+        private int dayIndexInitial;
+        private int minutesDebutInitial;
+        private int minutesFinInitial;
+        private int dayIndexCourant;
+        private double pressSceneX;
+        private double pressSceneY;
+        private boolean enTrainDeBouger;
+        private ModeInteraction mode;
 
-            Node bloc = construireBlocCreneau(creneau);
-            grille.add(bloc, jourIndex + 1, ligneDebut + 1, 1, span);
+        BlocCreneau(Creneau creneau) {
+            this.creneau = creneau;
+
+            libelle.setWrapText(true);
+            libelle.setMouseTransparent(true);
+            libelle.setStyle("-fx-text-fill: white; -fx-font-size: 11;");
+            getChildren().add(libelle);
+            setAlignment(Pos.TOP_LEFT);
+            setPadding(new Insets(3, 2, 2, 4));
+            setPrefWidth(largeurColonneJour - 4);
+            setStyle(styleFond());
+
+            actualiser(Math.max(0, indexDuJour(creneau.getJour())),
+                    toMinutes(creneau.getHeureDebut()), toMinutes(creneau.getHeureFin()));
+
+            setOnMousePressed(this::surAppui);
+            setOnMouseDragged(this::surGlissement);
+            setOnMouseReleased(this::surRelachement);
+            setOnMouseMoved(this::surSurvol);
+            setOnMouseClicked(Event::consume);
         }
 
-        for (int r = 0; r < nbLignes; r++) {
-            if (!occupe[r]) {
-                LocalTime heureDebut = limites.get(r);
-                grille.add(construireCelluleVide(jour, heureDebut), jourIndex + 1, r + 1);
-            }
+        private String styleFond() {
+            Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
+            String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : "#95a5a6";
+            return "-fx-background-color: " + couleur + "; -fx-background-radius: 4;";
         }
-    }
 
-    private Node construireBlocCreneau(Creneau creneau) {
-        Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
-        String nomCours = cours != null ? cours.getNom() : "(cours supprimé)";
-        String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : "#95a5a6";
+        private void actualiser(int dayIndex, int debutMinutes, int finMinutes) {
+            dayIndexCourant = dayIndex;
+            setLayoutX(dayIndex * largeurColonneJour + 2);
+            setLayoutY(MARGE_VERTICALE + (debutMinutes - toMinutes(HEURE_DEBUT_GRILLE)) * PIXELS_PAR_MINUTE);
+            setPrefHeight(Math.max(DUREE_MIN_MINUTES, finMinutes - debutMinutes) * PIXELS_PAR_MINUTE);
+            Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
+            String nomCours = cours != null ? cours.getNom() : "(cours supprimé)";
+            libelle.setText(nomCours + "\n" + minutesVersHeure(debutMinutes) + " - " + minutesVersHeure(finMinutes));
+        }
 
-        Label libelle = new Label(nomCours + "\n" + creneau.getHeureDebut() + " - " + creneau.getHeureFin());
-        libelle.setWrapText(true);
-        libelle.setStyle("-fx-text-fill: white; -fx-font-size: 11;");
+        private ModeInteraction determinerMode(double y) {
+            if (y <= HAUTEUR_POIGNEE) {
+                return ModeInteraction.REDIMENSIONNER_HAUT;
+            }
+            if (y >= getHeight() - HAUTEUR_POIGNEE) {
+                return ModeInteraction.REDIMENSIONNER_BAS;
+            }
+            return ModeInteraction.DEPLACER;
+        }
 
-        StackPane bloc = new StackPane(libelle);
-        bloc.setStyle("-fx-background-color: " + couleur + "; -fx-background-radius: 4;");
-        bloc.setPadding(new Insets(2, 4, 2, 4));
-        bloc.setMaxWidth(Double.MAX_VALUE);
-        bloc.setMaxHeight(Double.MAX_VALUE);
-        bloc.setCursor(Cursor.HAND);
-        bloc.setOnMouseClicked(e -> ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut()));
-        return bloc;
-    }
+        private void surSurvol(MouseEvent e) {
+            setCursor(determinerMode(e.getY()) == ModeInteraction.DEPLACER ? Cursor.MOVE : Cursor.V_RESIZE);
+        }
 
-    private Node construireCelluleVide(DayOfWeek jour, LocalTime heureDebut) {
-        Button cellule = new Button();
-        cellule.setMaxWidth(Double.MAX_VALUE);
-        cellule.setMaxHeight(Double.MAX_VALUE);
-        cellule.setStyle("-fx-background-color: transparent; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 1;");
-        cellule.setOnAction(e -> ouvrirDialogueCreneau(null, jour, heureDebut));
-        return cellule;
+        private void surAppui(MouseEvent e) {
+            pressSceneX = e.getSceneX();
+            pressSceneY = e.getSceneY();
+            dayIndexInitial = Math.max(0, indexDuJour(creneau.getJour()));
+            minutesDebutInitial = toMinutes(creneau.getHeureDebut());
+            minutesFinInitial = toMinutes(creneau.getHeureFin());
+            mode = determinerMode(e.getY());
+            enTrainDeBouger = false;
+            e.consume();
+        }
+
+        private void surGlissement(MouseEvent e) {
+            double deltaX = e.getSceneX() - pressSceneX;
+            double deltaY = e.getSceneY() - pressSceneY;
+            if (Math.abs(deltaX) > SEUIL_CLIC_PIXELS || Math.abs(deltaY) > SEUIL_CLIC_PIXELS) {
+                enTrainDeBouger = true;
+            }
+            if (!enTrainDeBouger) {
+                e.consume();
+                return;
+            }
+
+            long pas = Math.round((deltaY / PIXELS_PAR_MINUTE) / PAS_SNAP_MINUTES);
+            int deltaMinutes = (int) (pas * PAS_SNAP_MINUTES);
+            int minGrille = toMinutes(HEURE_DEBUT_GRILLE);
+            int maxGrille = toMinutes(HEURE_FIN_GRILLE);
+
+            int nouveauDayIndex = dayIndexInitial;
+            int nouveauDebut = minutesDebutInitial;
+            int nouveauFin = minutesFinInitial;
+            switch (mode) {
+                case DEPLACER -> {
+                    int duree = minutesFinInitial - minutesDebutInitial;
+                    nouveauDebut = clamp(minutesDebutInitial + deltaMinutes, minGrille, maxGrille - duree);
+                    nouveauFin = nouveauDebut + duree;
+                    int deltaJours = (int) Math.round(deltaX / largeurColonneJour);
+                    nouveauDayIndex = clamp(dayIndexInitial + deltaJours, 0, JOURS_AFFICHES.length - 1);
+                }
+                case REDIMENSIONNER_HAUT ->
+                        nouveauDebut = clamp(minutesDebutInitial + deltaMinutes, minGrille, minutesFinInitial - DUREE_MIN_MINUTES);
+                case REDIMENSIONNER_BAS ->
+                        nouveauFin = clamp(minutesFinInitial + deltaMinutes, minutesDebutInitial + DUREE_MIN_MINUTES, maxGrille);
+            }
+
+            actualiser(nouveauDayIndex, nouveauDebut, nouveauFin);
+            e.consume();
+        }
+
+        private void surRelachement(MouseEvent e) {
+            if (!enTrainDeBouger) {
+                ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut());
+                e.consume();
+                return;
+            }
+
+            int debutFinal = toMinutes(HEURE_DEBUT_GRILLE) + (int) Math.round((getLayoutY() - MARGE_VERTICALE) / PIXELS_PAR_MINUTE);
+            int finFinal = debutFinal + (int) Math.round(getPrefHeight() / PIXELS_PAR_MINUTE);
+            creneau.setJour(JOURS_AFFICHES[dayIndexCourant]);
+            creneau.setHeureDebut(minutesVersHeure(debutFinal));
+            creneau.setHeureFin(minutesVersHeure(finFinal));
+            notifierChangement();
+            e.consume();
+        }
     }
 
     private void ouvrirDialogueCreneau(Creneau creneauExistant, DayOfWeek jour, LocalTime heureDebutParDefaut) {
@@ -262,19 +435,27 @@ public class EmploiDuTempsPane extends BorderPane {
         LocalTime t = HEURE_DEBUT_GRILLE;
         while (!t.isAfter(HEURE_FIN_GRILLE)) {
             limites.add(t);
-            t = t.plusMinutes(PAS_MINUTES);
+            t = t.plusMinutes(PAS_SNAP_MINUTES);
         }
         return limites;
-    }
-
-    private int indexLigne(LocalTime heure) {
-        return (int) Duration.between(HEURE_DEBUT_GRILLE, heure).toMinutes() / PAS_MINUTES;
     }
 
     private void notifierChangement() {
         if (surChangement != null) {
             surChangement.run();
         }
+    }
+
+    private static int toMinutes(LocalTime heure) {
+        return heure.getHour() * 60 + heure.getMinute();
+    }
+
+    private static LocalTime minutesVersHeure(int minutes) {
+        return LocalTime.of(minutes / 60, minutes % 60);
+    }
+
+    private static int clamp(int valeur, int min, int max) {
+        return Math.max(min, Math.min(max, valeur));
     }
 
     private static String nomJour(DayOfWeek jour) {
