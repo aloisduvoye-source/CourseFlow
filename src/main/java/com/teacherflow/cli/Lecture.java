@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -29,12 +30,17 @@ public final class Lecture {
     }
 
     public static void main(String[] args) {
+        if (Arrays.asList(args).contains("--help") || Arrays.asList(args).contains("-h")) {
+            afficherAide();
+            return;
+        }
+
         ArgumentsLecture arguments;
         try {
             arguments = ArgumentsLecture.analyser(args, LocalDate.now().getDayOfWeek(), LocalTime.now());
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
-            System.err.println("Usage : lecture [--jour <Lundi|Mardi|...>] [--heure HH:mm] [-p | -n] [-l]");
+            System.err.println("Usage : lecture [--jour <Lundi|Mardi|...>] [--heure HH:mm] [-p | -n] [-l] [--help]");
             System.exit(2);
             return;
         }
@@ -56,6 +62,32 @@ public final class Lecture {
             case PRECEDENT -> traiterCreneauRelatif(emploiDuTemps, arguments, false);
             case CRENEAU_COURANT -> traiterCreneauCourant(emploiDuTemps, arguments);
         }
+    }
+
+    private static void afficherAide() {
+        System.out.println("""
+                Usage : lecture [OPTIONS]
+
+                Ouvre les fichiers du créneau de cours concerné, sans lancer l'interface graphique.
+
+                Options :
+                  (aucune)             Ouvre les fichiers du créneau courant (jour/heure système)
+                  --jour <nom>         Cible un jour (Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche)
+                  --heure HH:mm        Cible une heure précise
+                  --jour <nom> seul    Sans --heure : liste les créneaux de ce jour au lieu d'en ouvrir un
+                  -n                   Ouvre le créneau suivant (boucle en fin de semaine)
+                  -p                   Ouvre le créneau précédent (boucle en début de semaine)
+                  -l                   Liste les fichiers du créneau résolu au lieu de les ouvrir
+                  .                    Lance l'application graphique (comme "code .")
+                  --help, -h           Affiche cette aide
+
+                Exemples :
+                  lecture
+                  lecture --jour Mardi --heure 09:30
+                  lecture --jour Mardi
+                  lecture -n
+                  lecture -n -l
+                  lecture .""");
     }
 
     private static void listerCreneauxDuJour(EmploiDuTemps emploiDuTemps, DayOfWeek jour) {
