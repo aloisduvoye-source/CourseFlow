@@ -47,7 +47,7 @@ Lancée dans un terminal, `lecture` :
 - `--jour <nom>` et/ou `--heure HH:mm` : cible un autre créneau (ex. préparer la séance suivante) — `--jour` seul, **sans** `--heure`, liste plutôt tous les créneaux de ce jour (utile pour voir le programme de la journée sans rien ouvrir),
 - `-n` / `-p` : ouvre le créneau **suivant**/**précédent** dans la semaine plutôt que celui du moment (boucle : après le dernier créneau du Dimanche, `-n` revient au premier du Lundi, et inversement pour `-p`) — si ce créneau tombe un autre jour que celui demandé, un message le signale avant d'ouvrir les fichiers,
 - `-l` : liste les fichiers du créneau résolu (courant, ciblé, ou via `-n`/`-p`) au lieu de les ouvrir,
-- `-s` : affiche l'emploi du temps de la semaine entière sous forme de grille ASCII dans le terminal (jour courant marqué d'un `*`), sans rien ouvrir,
+- `-s` : affiche l'emploi du temps de la semaine entière sous forme de grille ASCII dans le terminal (jour courant marqué d'un `*`), sans rien ouvrir — chaque créneau est dessiné comme une boîte dont la hauteur suit sa durée (arrondie à l'heure), affichant le nom du cours (+ salle), la description, puis autant de fichiers que la place le permet (avec un `+N fichiers` si tous ne tiennent pas),
 - `.` : lance l'application graphique elle-même, comme `code .` — retourne la main immédiatement, sans bloquer le terminal.
 
 Cela permet à l'utilisateur d'avoir, en une seule commande, tous les documents de son heure de cours ouverts et prêts à l'emploi — un gain de temps immédiat entre deux cours ou juste avant d'entrer en classe.
@@ -159,7 +159,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - [x] `--jour` seul liste les créneaux du jour au lieu d'en ouvrir un
 - [x] `-p`/`-n` ouvrent le créneau précédent/suivant de la semaine (navigation circulaire), avec avertissement si le jour résolu diffère du jour demandé
 - [x] `-l` liste les fichiers du créneau résolu au lieu de les ouvrir
-- [x] `-s` affiche l'emploi du temps de la semaine en grille ASCII (jour courant marqué)
+- [x] `-s` affiche l'emploi du temps de la semaine en grille ASCII (jour courant marqué), créneaux rendus en boîtes (nom/salle/description/fichiers selon la hauteur disponible)
 - [x] `lecture .` lance l'application graphique (comme `code .`), détachée du terminal
 - [x] Script d'installation ([bin/lecture](bin/lecture)) appelant le point d'entrée CLI via `mvn javafx:run -Djavafx.mainClass=...`
 
