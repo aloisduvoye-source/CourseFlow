@@ -1,19 +1,58 @@
 package com.teacherflow.app;
 
+import com.teacherflow.model.EmploiDuTemps;
+import com.teacherflow.persistence.DataStore;
+import com.teacherflow.ui.CoursGestionPane;
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.layout.StackPane;
+import javafx.scene.control.Alert;
 import javafx.stage.Stage;
+
+import java.io.IOException;
 
 public class App extends Application {
 
+    private final DataStore dataStore = new DataStore();
+    private EmploiDuTemps emploiDuTemps;
+
     @Override
     public void start(Stage stage) {
-        StackPane root = new StackPane(new Label("TeacherFlow"));
-        stage.setScene(new Scene(root, 800, 600));
+        emploiDuTemps = chargerDonnees();
+
+        CoursGestionPane racine = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
+
+        stage.setScene(new Scene(racine, 900, 600));
         stage.setTitle("TeacherFlow");
+        stage.setOnCloseRequest(e -> sauvegarder());
         stage.show();
+    }
+
+    private EmploiDuTemps chargerDonnees() {
+        try {
+            return dataStore.charger();
+        } catch (IOException e) {
+            afficherErreur("Chargement impossible",
+                    "Les données n'ont pas pu être chargées depuis " + dataStore.getFichierDonnees()
+                            + ".\n" + e.getMessage());
+            return new EmploiDuTemps();
+        }
+    }
+
+    private void sauvegarder() {
+        try {
+            dataStore.sauvegarder(emploiDuTemps);
+        } catch (IOException e) {
+            afficherErreur("Sauvegarde impossible",
+                    "Les données n'ont pas pu être sauvegardées dans " + dataStore.getFichierDonnees()
+                            + ".\n" + e.getMessage());
+        }
+    }
+
+    private void afficherErreur(String titre, String message) {
+        Alert alerte = new Alert(Alert.AlertType.ERROR, message);
+        alerte.setTitle(titre);
+        alerte.setHeaderText(titre);
+        alerte.showAndWait();
     }
 
     public static void main(String[] args) {
