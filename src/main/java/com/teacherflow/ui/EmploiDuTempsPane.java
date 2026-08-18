@@ -362,8 +362,8 @@ public class EmploiDuTempsPane extends BorderPane {
         private String styleFond() {
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : "#95a5a6";
-            return "-fx-background-color: " + couleur + "; -fx-background-radius: 8;"
-                    + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 4, 0, 0, 1);";
+            return "-fx-background-color: " + couleur + "; -fx-background-radius: 5;"
+                    + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 3, 0, 0, 1);";
         }
 
         private void actualiser(int dayIndex, int debutMinutes, int finMinutes) {
