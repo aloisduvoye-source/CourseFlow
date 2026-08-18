@@ -60,21 +60,17 @@ Techniquement, cette commande doit pouvoir fonctionner **sans lancer l'interface
 
 ## État actuel du projet
 
-Le squelette Maven/JavaFX est en place ([pom.xml](pom.xml), [App.java](src/main/java/com/teacherflow/app/App.java)), et le socle du modèle de données est implémenté et testé :
-
-- Modèle (`com.teacherflow.model`) : [Fichier](src/main/java/com/teacherflow/model/Fichier.java), [Cours](src/main/java/com/teacherflow/model/Cours.java), [Creneau](src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java)
-- Persistance JSON (`com.teacherflow.persistence`) : [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson), fichier par défaut `~/.teacherflow/data.json`
-- Tests unitaires (`mvn test`) couvrant la résolution des fichiers par créneau et le cycle sauvegarde/rechargement
-
-L'interface graphique (grille emploi du temps, gestion des cours) et la commande `lecture` restent à construire par-dessus ce socle.
+- **Socle (modèle + persistance)** ✅ — [Fichier](src/main/java/com/teacherflow/model/Fichier.java), [Cours](src/main/java/com/teacherflow/model/Cours.java), [Creneau](src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) ; persistance JSON via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson) dans `~/.teacherflow/data.json` ; couvert par des tests unitaires (`mvn test`).
+- **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle ou import d'un dossier entier) ou en retirer plusieurs à la fois, supprimer un cours. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
+- **Reste à construire** : la grille d'emploi du temps (Phase 3), la sélection de fichiers par créneau (Phase 4) et la commande `lecture` (Phase 5).
 
 ## Roadmap
 
-### Phase 0 — Cadrage (en cours)
+### Phase 0 — Cadrage ✅
 - [x] Définir le concept et le modèle de données (ce document)
-- [ ] Choisir le mécanisme de persistance (JSON simple vs SQLite)
-- [ ] Décider du format d'invocation de `lecture` (script wrapper, `jpackage` avec plusieurs points d'entrée, ou sous-commande de l'app principale)
-- [ ] Esquisser les écrans principaux (wireframes rapides) : grille emploi du temps, gestion des cours, sélection de fichiers par créneau
+- [x] Choisir le mécanisme de persistance → JSON local (voir Phase 1)
+- [x] Décider du format d'invocation de `lecture` → script bash dans `~/.local/bin` appelant le jar (voir Phase 5)
+- [ ] Esquisser les écrans principaux (wireframes rapides) — fait au fil de l'implémentation plutôt qu'en amont
 
 ### Phase 1 — Modèle de données & persistance ✅
 - [x] Implémentation des classes `Cours`, `Fichier`, `Créneau`, `EmploiDuTemps`
@@ -82,10 +78,11 @@ L'interface graphique (grille emploi du temps, gestion des cours) et la commande
 - [x] Emplacement de stockage des données utilisateur (`~/.teacherflow/data.json`)
 - [x] Tests unitaires de validation (modèle + persistance)
 
-### Phase 2 — Gestion des Cours
-- Écran de création/édition d'un Cours (nom, couleur)
-- Ajout/suppression de fichiers dans la bibliothèque d'un Cours (via un sélecteur de fichiers natif)
-- Liste/vue d'ensemble des Cours existants
+### Phase 2 — Gestion des Cours ✅
+- [x] Écran de création/renommage/couleur d'un Cours
+- [x] Ajout de fichiers (sélecteur natif, individuel ou multiple) et import d'un dossier entier (non récursif)
+- [x] Suppression de fichiers (sélection multiple) et suppression d'un Cours (avec confirmation, cascade sur ses créneaux)
+- [x] Liste/vue d'ensemble des Cours existants
 
 ### Phase 3 — Emploi du temps
 - Grille hebdomadaire (jours en colonnes, heures en lignes)
@@ -123,6 +120,4 @@ L'interface graphique (grille emploi du temps, gestion des cours) et la commande
 
 ## Prochaine étape suggérée
 
-Avant d'écrire du code métier, trancher deux décisions structurantes de la Phase 0 :
-1. **Persistance** — JSON local suffit largement pour un usage mono-utilisateur/mono-machine et est simple à versionner/sauvegarder ; SQLite n'apporterait de valeur qu'en cas de besoins de requêtage complexes (peu probable ici).
-2. **Invocation de `lecture`** — décider si l'app JavaFX et la commande `lecture` sont deux points d'entrée d'un même jar (ex. `App` détecte des arguments CLI et bascule en mode headless) ou deux artefacts distincts partageant un module "core" commun.
+Phase 3 — construire la grille d'emploi du temps (jours × heures) qui assigne un Cours à chaque créneau, par-dessus le socle `EmploiDuTemps`/`Creneau` déjà en place. C'est le préalable à la Phase 4 (sélection de fichiers par créneau) et à la commande `lecture` (Phase 5), qui ont toutes deux besoin de créneaux existants pour être utiles.
