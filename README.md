@@ -41,13 +41,14 @@ Point important de la structure : les fichiers appartiennent au **Cours**, pas a
 ## La commande `lecture`
 
 Lancée dans un terminal, `lecture` :
-- détermine le créneau concerné (par défaut : le créneau correspondant au jour/heure actuels — avec la possibilité de préciser `--jour <nom>` et/ou `--heure HH:mm` pour cibler un autre créneau, ex. préparer la séance suivante),
-- récupère la liste des fichiers sélectionnés pour ce créneau,
-- ouvre chacun de ces fichiers avec l'application par défaut du système d'exploitation.
+- sans argument : ouvre les fichiers du créneau correspondant au jour/heure actuels,
+- `--jour <nom>` et/ou `--heure HH:mm` : cible un autre créneau (ex. préparer la séance suivante) — `--jour` seul, **sans** `--heure`, liste plutôt tous les créneaux de ce jour (utile pour voir le programme de la journée sans rien ouvrir),
+- `-n` / `-p` : ouvre le créneau **suivant**/**précédent** dans la semaine plutôt que celui du moment (boucle : après le dernier créneau du Dimanche, `-n` revient au premier du Lundi, et inversement pour `-p`),
+- `.` : lance l'application graphique elle-même, comme `code .` — retourne la main immédiatement, sans bloquer le terminal.
 
 Cela permet à l'utilisateur d'avoir, en une seule commande, tous les documents de son heure de cours ouverts et prêts à l'emploi — un gain de temps immédiat entre deux cours ou juste avant d'entrer en classe.
 
-Techniquement, cette commande fonctionne **sans lancer l'interface graphique** : [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) est un point d'entrée headless qui lit les mêmes données que l'application JavaFX ([EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java)) et réutilise la même logique d'ouverture de fichiers ([OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java)). Voir [Installation et démarrage](#installation-et-démarrage) pour l'utiliser.
+Techniquement, cette commande fonctionne **sans lancer l'interface graphique** (sauf avec `.`) : [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) est un point d'entrée headless qui lit les mêmes données que l'application JavaFX ([EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java)) et réutilise la même logique d'ouverture de fichiers ([OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java)). Voir [Installation et démarrage](#installation-et-démarrage) pour l'utiliser.
 
 ## Stack technique
 
@@ -85,6 +86,10 @@ ln -s "$(pwd)/bin/lecture" ~/.local/bin/lecture
 ```
 lecture                              # ouvre les fichiers du créneau courant (jour/heure système)
 lecture --jour Mardi --heure 09:30   # cible un autre créneau
+lecture --jour Mardi                 # liste les créneaux du Mardi, sans rien ouvrir
+lecture -n                           # ouvre le créneau suivant
+lecture -p                           # ouvre le créneau précédent
+lecture .                            # lance l'application graphique (comme "code .")
 ```
 Le script appelle `mvn javafx:run` avec un point d'entrée alternatif ([Lecture](src/main/java/com/teacherflow/cli/Lecture.java)) — pas besoin de builder un jar séparément pour l'instant (voir Phase 8 pour un vrai exécutable packagé).
 
@@ -94,7 +99,7 @@ Le script appelle `mvn javafx:run` avec un point d'entrée alternatif ([Lecture]
 - **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle ou import d'un dossier entier) ou en retirer plusieurs à la fois, supprimer un cours. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
 - **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille des 7 jours (7h-20h), créer/modifier/supprimer un créneau via une boîte de dialogue, rendu coloré par cours. Un créneau placé peut être glissé à la souris (déplacement libre entre jours et horaires, par pas de 10 min) et redimensionné en tirant son bord haut/bas. La largeur des colonnes s'adapte à la largeur de la fenêtre. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
 - **Sélection de fichiers par créneau (UI)** ✅ — dans la boîte de dialogue d'un créneau : liste à cocher des fichiers du Cours associé (tout coché par défaut à la création), boutons "Tout cocher"/"Tout décocher", et bouton "Ouvrir maintenant" qui ouvre les fichiers cochés sans passer par le terminal. Testé manuellement dans l'application.
-- **Commande `lecture` (CLI)** ✅ — [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](src/main/java/com/teacherflow/cli/ArgumentsLecture.java) (testé unitairement) : détecte le créneau courant (ou ciblé via `--jour`/`--heure`), ouvre ses fichiers via la logique partagée [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java). Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
+- **Commande `lecture` (CLI)** ✅ — [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](src/main/java/com/teacherflow/cli/ArgumentsLecture.java) + [NavigationCreneaux](src/main/java/com/teacherflow/cli/NavigationCreneaux.java) (testés unitairement) : créneau courant, liste du jour (`--jour` seul), créneau précédent/suivant (`-p`/`-n`), et lancement de l'appli graphique (`lecture .`) — ouvre les fichiers via la logique partagée [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java). Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
 - **Design UI** : palette sobre et professionnelle ([teacherflow.css](src/main/resources/css/teacherflow.css)), navigation verticale, boîtes de dialogue pour l'édition des créneaux.
 - **Reste à construire** : confort/robustesse, fonctionnalités avancées et packaging natif (Phases 6-8, optionnelles).
 
@@ -136,6 +141,9 @@ Le script appelle `mvn javafx:run` avec un point d'entrée alternatif ([Lecture]
 - [x] Ouverture des fichiers associés via une commande native (`xdg-open`/`open`/`start`, voir Stack technique)
 - [x] Gestion des cas limites : aucun créneau à l'heure actuelle (message clair), fichier non ouvrable (signalé sans bloquer les autres), plusieurs fichiers ouverts en une fois
 - [x] Option pour cibler un autre créneau que celui du moment (`--jour`, `--heure`)
+- [x] `--jour` seul liste les créneaux du jour au lieu d'en ouvrir un
+- [x] `-p`/`-n` ouvrent le créneau précédent/suivant de la semaine (navigation circulaire)
+- [x] `lecture .` lance l'application graphique (comme `code .`), détachée du terminal
 - [x] Script d'installation ([bin/lecture](bin/lecture)) appelant le point d'entrée CLI via `mvn javafx:run -Djavafx.mainClass=...`
 
 ### Phase 6 — Confort & robustesse

@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Ouvre les fichiers du créneau courant (ou ciblé via --jour/--heure), sans lancer
-# l'interface graphique. À installer via :
+# Ouvre les fichiers du créneau courant (ou ciblé via --jour/--heure/-p/-n), sans lancer
+# l'interface graphique — sauf avec "lecture ." qui lance l'application (comme "code .").
+# À installer via :
 #   ln -s "$(pwd)/bin/lecture" ~/.local/bin/lecture
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 PROJET_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 cd "$PROJET_DIR" || exit 1
+
+if [ "$1" = "." ]; then
+    setsid mvn -q javafx:run < /dev/null > /dev/null 2>&1 &
+    disown
+    exit 0
+fi
 
 mvn -q javafx:run \
     -Djavafx.mainClass=com.teacherflow.app/com.teacherflow.cli.Lecture \
