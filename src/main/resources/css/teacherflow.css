@@ -119,20 +119,6 @@
 .bouton-icone:hover .icone-poubelle {
     -fx-fill: -fx-pro-danger;
 }
-.icone-fermer {
-    -fx-fill: -fx-pro-text-muted;
-}
-.bouton-icone:hover .icone-fermer {
-    -fx-fill: -fx-pro-text;
-}
-
-/* --- Panneau latéral (édition d'un créneau) --- */
-.panneau-lateral {
-    -fx-background-color: -fx-pro-panel;
-    -fx-border-color: -fx-pro-border;
-    -fx-border-width: 0 0 0 1;
-}
-
 /* --- Listes --- */
 .list-view {
     -fx-background-color: -fx-pro-panel;
