@@ -19,6 +19,8 @@ public class Creneau {
     private LocalTime heureFin;
     private UUID coursId;
     private List<UUID> fichiersSelectionnesIds = new ArrayList<>();
+    private String salle;
+    private String description;
 
     public Creneau() {
     }
@@ -94,6 +96,22 @@ public class Creneau {
 
     public void setFichiersSelectionnesIds(List<UUID> fichiersSelectionnesIds) {
         this.fichiersSelectionnesIds = fichiersSelectionnesIds;
+    }
+
+    public String getSalle() {
+        return salle;
+    }
+
+    public void setSalle(String salle) {
+        this.salle = salle;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     @Override

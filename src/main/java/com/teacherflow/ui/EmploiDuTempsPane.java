@@ -21,6 +21,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
@@ -386,6 +387,10 @@ public class EmploiDuTempsPane extends BorderPane {
         choixDebut.getItems().addAll(optionsDebut);
         ComboBox<LocalTime> choixFin = new ComboBox<>();
         choixFin.getItems().addAll(optionsFin);
+        TextField champSalle = new TextField();
+        champSalle.setPromptText("Salle (optionnel)");
+        TextField champDescription = new TextField();
+        champDescription.setPromptText("Description (optionnel)");
 
         Set<UUID> fichiersCoches = new LinkedHashSet<>();
         Cours coursInitial;
@@ -395,6 +400,8 @@ public class EmploiDuTempsPane extends BorderPane {
             fichiersCoches.addAll(creneauExistant.getFichiersSelectionnesIds());
             choixDebut.setValue(creneauExistant.getHeureDebut());
             choixFin.setValue(creneauExistant.getHeureFin());
+            champSalle.setText(creneauExistant.getSalle());
+            champDescription.setText(creneauExistant.getDescription());
         } else {
             coursInitial = emploiDuTemps.getCours().get(0);
             coursInitial.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
@@ -448,9 +455,11 @@ public class EmploiDuTempsPane extends BorderPane {
         formulaire.addRow(0, new Label("Cours"), choixCours);
         formulaire.addRow(1, new Label("De"), choixDebut);
         formulaire.addRow(2, new Label("À"), choixFin);
-        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 3, 2, 1);
-        formulaire.add(listeFichiers, 0, 4, 2, 1);
-        formulaire.add(boutonsFichiers, 0, 5, 2, 1);
+        formulaire.addRow(3, new Label("Salle"), champSalle);
+        formulaire.addRow(4, new Label("Description"), champDescription);
+        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 5, 2, 1);
+        formulaire.add(listeFichiers, 0, 6, 2, 1);
+        formulaire.add(boutonsFichiers, 0, 7, 2, 1);
 
         ButtonType boutonValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
         ButtonType boutonSupprimer = new ButtonType("Supprimer", ButtonBar.ButtonData.LEFT);
@@ -512,6 +521,8 @@ public class EmploiDuTempsPane extends BorderPane {
             creneau.setCoursId(coursChoisi.getId());
         }
         creneau.setFichiersSelectionnesIds(idsSelectionnes);
+        creneau.setSalle(videVersNull(champSalle.getText()));
+        creneau.setDescription(videVersNull(champDescription.getText()));
 
         notifierChangement();
         rafraichir();
@@ -564,6 +575,10 @@ public class EmploiDuTempsPane extends BorderPane {
 
     private static LocalTime minutesVersHeure(int minutes) {
         return LocalTime.of(minutes / 60, minutes % 60);
+    }
+
+    private static String videVersNull(String texte) {
+        return texte == null || texte.isBlank() ? null : texte;
     }
 
     private static int clamp(int valeur, int min, int max) {

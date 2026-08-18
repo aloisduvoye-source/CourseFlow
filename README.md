@@ -29,6 +29,8 @@ Créneau (CreneauHoraire)
  ├─ jour de la semaine
  ├─ heure de début / heure de fin
  ├─ Cours associé (référence)
+ ├─ salle (optionnel)
+ ├─ description (optionnel)
  └─ sous-ensemble de Fichiers sélectionnés pour CE créneau
     (sélectionnés parmi les fichiers du Cours associé — pas une nouvelle liste libre)
 
