@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Ouvre les fichiers du créneau courant (ou ciblé via --jour/--heure/-p/-n), sans lancer
+# Ouvre les fichiers du créneau courant (ou ciblé via --jour/--heure/-p/-n/-l), sans lancer
 # l'interface graphique — sauf avec "lecture ." qui lance l'application (comme "code .").
 # À installer via :
 #   ln -s "$(pwd)/bin/lecture" ~/.local/bin/lecture
+#
+# Appelle "java" directement (classpath mis en cache dans target/) plutôt que
+# "mvn javafx:run" à chaque exécution : Maven doit se réinitialiser et résoudre le plugin
+# à chaque appel (~1,3 s), contre ~0,3 s pour un lancement JVM direct.
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 PROJET_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
@@ -14,8 +18,16 @@ if [ "$1" = "." ]; then
     exit 0
 fi
 
-mvn -q javafx:run \
-    -Djavafx.mainClass=com.teacherflow.app/com.teacherflow.cli.Lecture \
-    -Djavafx.args="$*" 2>&1 \
-    | sed -r 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
-    | grep -v -E '^\s+at |^org\.apache\.|^\[ERROR\] (To see|Re-run|For more|http)'
+CLASSPATH_CACHE="target/lecture-classpath.txt"
+
+if [ ! -d target/classes ]; then
+    mvn -q compile || exit 1
+fi
+
+if [ ! -f "$CLASSPATH_CACHE" ] || [ pom.xml -nt "$CLASSPATH_CACHE" ]; then
+    mvn -q dependency:build-classpath -Dmdep.outputFile="$CLASSPATH_CACHE" || exit 1
+fi
+
+exec java --module-path "target/classes:$(cat "$CLASSPATH_CACHE")" \
+    --add-modules com.teacherflow.app \
+    --module com.teacherflow.app/com.teacherflow.cli.Lecture "$@"

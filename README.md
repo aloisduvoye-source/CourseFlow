@@ -94,7 +94,7 @@ lecture -l                           # liste les fichiers du créneau courant, s
 lecture -n -l                        # liste les fichiers du créneau suivant
 lecture .                            # lance l'application graphique (comme "code .")
 ```
-Le script appelle `mvn javafx:run` avec un point d'entrée alternatif ([Lecture](src/main/java/com/teacherflow/cli/Lecture.java)) — pas besoin de builder un jar séparément pour l'instant (voir Phase 8 pour un vrai exécutable packagé).
+Le script lance `java` directement (module-path + classpath mis en cache dans `target/lecture-classpath.txt` lors du premier appel, régénéré si `pom.xml` change) plutôt que de repasser par `mvn javafx:run` à chaque fois — ~0,3 s par appel au lieu de ~1,4 s, Maven n'ayant plus à se réinitialiser. Seul `lecture .` (lancement de l'appli graphique) passe encore par `mvn javafx:run`, sans impact puisqu'il n'est pas sur le chemin critique d'usage répété. Pas besoin de builder un jar séparément pour l'instant (voir Phase 8 pour un vrai exécutable packagé).
 
 ## État actuel du projet
 
