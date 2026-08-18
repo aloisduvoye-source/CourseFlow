@@ -16,6 +16,7 @@
         <javafx.version>21.0.2</javafx.version>
         <jackson.version>2.17.2</jackson.version>
         <junit.version>5.10.3</junit.version>
+        <javafx.mainClass>com.teacherflow.app/com.teacherflow.app.App</javafx.mainClass>
     </properties>
 
     <dependencies>
@@ -64,7 +65,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>com.teacherflow.app/com.teacherflow.app.App</mainClass>
+                    <mainClass>${javafx.mainClass}</mainClass>
                 </configuration>
             </plugin>
         </plugins>

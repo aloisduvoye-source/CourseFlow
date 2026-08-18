@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Ouvre les fichiers du créneau courant (ou ciblé via --jour/--heure), sans lancer
+# l'interface graphique. À installer via :
+#   ln -s "$(pwd)/bin/lecture" ~/.local/bin/lecture
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJET_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+cd "$PROJET_DIR" || exit 1
+
+mvn -q javafx:run \
+    -Djavafx.mainClass=com.teacherflow.app/com.teacherflow.cli.Lecture \
+    -Djavafx.args="$*" 2>&1 \
+    | sed -r 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
+    | grep -v -E '^\s+at |^org\.apache\.|^\[ERROR\] (To see|Re-run|For more|http)'

@@ -1,9 +1,11 @@
 package com.teacherflow.ui;
 
+import com.teacherflow.io.OuvreurFichiers;
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.util.NomsJours;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.event.Event;
 import javafx.geometry.Bounds;
@@ -30,7 +32,6 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
-import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -98,7 +99,7 @@ public class EmploiDuTempsPane extends BorderPane {
         ligneEntetes.getChildren().clear();
         ligneEntetes.getChildren().add(espace(LARGEUR_COLONNE_HEURES));
         for (DayOfWeek jour : JOURS_AFFICHES) {
-            Label enTete = new Label(nomJour(jour));
+            Label enTete = new Label(NomsJours.nom(jour));
             enTete.setPrefWidth(largeurColonneJour);
             enTete.setAlignment(Pos.CENTER);
             enTete.getStyleClass().add("titre-jour");
@@ -457,7 +458,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
         Dialog<ButtonType> dialogue = new Dialog<>();
         dialogue.setTitle(creneauExistant == null ? "Nouveau créneau" : "Modifier le créneau");
-        dialogue.setHeaderText(nomJour(jour));
+        dialogue.setHeaderText(NomsJours.nom(jour));
         dialogue.getDialogPane().setContent(formulaire);
         if (creneauExistant != null) {
             dialogue.getDialogPane().getButtonTypes().add(boutonSupprimer);
@@ -521,12 +522,6 @@ public class EmploiDuTempsPane extends BorderPane {
         }
     }
 
-    /**
-     * Ouvre les fichiers avec l'application associée du système, en passant par une commande
-     * native ({@code xdg-open}/{@code open}/{@code start}) plutôt que {@code java.awt.Desktop} :
-     * initialiser AWT dans une appli JavaFX sur Linux charge un toolkit GTK concurrent de celui
-     * de JavaFX et fait planter la JVM.
-     */
     private void ouvrirFichiers(List<Fichier> fichiers) {
         if (fichiers.isEmpty()) {
             Alert alerte = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier sélectionné pour ce créneau.");
@@ -536,14 +531,7 @@ public class EmploiDuTempsPane extends BorderPane {
             alerte.showAndWait();
             return;
         }
-        List<String> echecs = new ArrayList<>();
-        for (Fichier fichier : fichiers) {
-            try {
-                new ProcessBuilder(commandeOuverture(fichier.getChemin())).start();
-            } catch (IOException e) {
-                echecs.add(fichier.getNomAffichage() != null ? fichier.getNomAffichage() : fichier.getChemin());
-            }
-        }
+        List<String> echecs = OuvreurFichiers.ouvrir(fichiers);
         if (!echecs.isEmpty()) {
             Alert alerte = new Alert(Alert.AlertType.WARNING,
                     "Certains fichiers n'ont pas pu être ouverts :\n" + String.join("\n", echecs));
@@ -552,17 +540,6 @@ public class EmploiDuTempsPane extends BorderPane {
             Styles.appliquer(alerte);
             alerte.showAndWait();
         }
-    }
-
-    private static List<String> commandeOuverture(String chemin) {
-        String os = System.getProperty("os.name", "").toLowerCase();
-        if (os.contains("win")) {
-            return List.of("cmd", "/c", "start", "\"\"", chemin);
-        }
-        if (os.contains("mac")) {
-            return List.of("open", chemin);
-        }
-        return List.of("xdg-open", chemin);
     }
 
     private List<LocalTime> genererLimites() {
@@ -591,17 +568,5 @@ public class EmploiDuTempsPane extends BorderPane {
 
     private static int clamp(int valeur, int min, int max) {
         return Math.max(min, Math.min(max, valeur));
-    }
-
-    private static String nomJour(DayOfWeek jour) {
-        return switch (jour) {
-            case MONDAY -> "Lundi";
-            case TUESDAY -> "Mardi";
-            case WEDNESDAY -> "Mercredi";
-            case THURSDAY -> "Jeudi";
-            case FRIDAY -> "Vendredi";
-            case SATURDAY -> "Samedi";
-            case SUNDAY -> "Dimanche";
-        };
     }
 }

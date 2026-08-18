@@ -10,4 +10,7 @@ module com.teacherflow.app {
     exports com.teacherflow.app;
     exports com.teacherflow.model;
     exports com.teacherflow.persistence;
+    exports com.teacherflow.cli;
+    exports com.teacherflow.io;
+    exports com.teacherflow.util;
 }
