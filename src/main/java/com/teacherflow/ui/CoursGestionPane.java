@@ -256,18 +256,22 @@ public class CoursGestionPane extends BorderPane {
         return contenu;
     }
 
+    /**
+     * Coche = importe le fichier dans le cours (sans dupliquer s'il y est déjà, ex. après un
+     * précédent décochage). Décoche = arrête seulement de le suivre via cette référence ; le
+     * fichier reste dans le cours (le supprimer reste possible via sa propre icône corbeille
+     * dans "Fichiers du cours") — cocher/décocher ici ne doit jamais supprimer un fichier.
+     */
     private void toggleFichierDossierReference(Cours cours, DossierReference reference, File fichier, boolean coche) {
+        String chemin = fichier.getAbsolutePath();
         if (coche) {
-            if (!reference.getFichiersImportes().contains(fichier.getAbsolutePath())) {
-                cours.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
-                reference.getFichiersImportes().add(fichier.getAbsolutePath());
+            boolean dejaPresent = cours.getFichiers().stream().anyMatch(f -> chemin.equals(f.getChemin()));
+            if (!dejaPresent) {
+                cours.ajouterFichier(chemin, fichier.getName());
             }
+            reference.getFichiersImportes().add(chemin);
         } else {
-            cours.getFichiers().stream()
-                    .filter(f -> f.getChemin().equals(fichier.getAbsolutePath()))
-                    .findFirst()
-                    .ifPresent(f -> cours.retirerFichier(f.getId()));
-            reference.getFichiersImportes().remove(fichier.getAbsolutePath());
+            reference.getFichiersImportes().remove(chemin);
         }
         tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(cours));
         notifierChangement();
