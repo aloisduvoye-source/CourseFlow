@@ -2,6 +2,7 @@ package com.teacherflow.persistence;
 
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
+import com.teacherflow.model.DossierReference;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
 import com.teacherflow.model.PlageHoraire;
@@ -66,6 +67,7 @@ class DataStoreTest {
         emploiDuTemps.getParametres().setBlocs(List.of(
                 new PlageHoraire(LocalTime.of(9, 0), LocalTime.of(10, 0)),
                 new PlageHoraire(LocalTime.of(10, 20), LocalTime.of(11, 20))));
+        emploiDuTemps.getParametres().setTagsDisponibles(List.of("dm", "td", "correction", "cm", "projet"));
 
         dataStore.sauvegarder(emploiDuTemps);
         EmploiDuTemps recharge = dataStore.charger();
@@ -76,5 +78,48 @@ class DataStoreTest {
         assertEquals(LocalTime.of(18, 30), recharge.getParametres().getHeureFinGrille());
         assertEquals(2, recharge.getParametres().getBlocs().size());
         assertEquals(LocalTime.of(10, 20), recharge.getParametres().getBlocs().get(1).getDebut());
+        assertEquals(List.of("dm", "td", "correction", "cm", "projet"), recharge.getParametres().getTagsDisponibles());
+    }
+
+    @Test
+    void sauvegarderPuisRechargerRestitueLeCoursParDefautEtLesFichiersLies(@TempDir Path repertoireTemp) throws IOException {
+        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
+
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
+        Fichier exercices = maths.ajouterFichier("/docs/maths/exercices.pdf", "Exercices");
+        emploiDuTemps.getParametres().setCoursDefautId(maths.getId());
+
+        Cours soutien = emploiDuTemps.ajouterCours("Soutien scolaire", "#e67e22");
+        soutien.ajouterFichierLie(exercices.getId());
+
+        dataStore.sauvegarder(emploiDuTemps);
+        EmploiDuTemps recharge = dataStore.charger();
+
+        assertEquals(maths.getId(), recharge.getParametres().getCoursDefautId());
+        Cours soutienRecharge = recharge.getCours().stream()
+                .filter(c -> c.getNom().equals("Soutien scolaire"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of(exercices.getId()), soutienRecharge.getFichiersLies());
+        assertEquals(1, recharge.fichiersVisibles(soutienRecharge).size());
+    }
+
+    @Test
+    void sauvegarderPuisRechargerRestitueLesDossiersReferences(@TempDir Path repertoireTemp) throws IOException {
+        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
+
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
+        DossierReference reference = new DossierReference("/docs/maths", true);
+        reference.getFichiersImportes().add("/docs/maths/exercices.pdf");
+        maths.getDossiersReferences().add(reference);
+
+        dataStore.sauvegarder(emploiDuTemps);
+        EmploiDuTemps recharge = dataStore.charger();
+
+        DossierReference referenceRechargee = recharge.getCours().get(0).getDossiersReferences().get(0);
+        assertEquals("/docs/maths", referenceRechargee.getChemin());
+        assertTrue(referenceRechargee.isRecursif());
+        assertEquals(List.of("/docs/maths/exercices.pdf"), referenceRechargee.getFichiersImportes());
     }
 }

@@ -59,4 +59,48 @@ class EmploiDuTempsTest {
         assertTrue(emploiDuTemps.trouverCours(maths.getId()).isEmpty());
         assertTrue(emploiDuTemps.trouverCreneau(creneau.getId()).isEmpty());
     }
+
+    @Test
+    void fichiersVisiblesInclutLesFichiersProduitsEtLiesDepuisLeCoursParDefaut() {
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
+        Fichier exercices = maths.ajouterFichier("/docs/maths/exercices.pdf", "Exercices");
+
+        Cours soutien = emploiDuTemps.ajouterCours("Soutien scolaire", "#e67e22");
+        Fichier fiche = soutien.ajouterFichier("/docs/soutien/fiche.pdf", "Fiche");
+        soutien.ajouterFichierLie(exercices.getId());
+
+        List<Fichier> visibles = emploiDuTemps.fichiersVisibles(soutien);
+
+        assertEquals(2, visibles.size());
+        assertTrue(visibles.contains(fiche));
+        assertTrue(visibles.contains(exercices));
+    }
+
+    @Test
+    void fichiersVisiblesIgnoreUnLienVersUnFichierSupprime() {
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
+        Fichier exercices = maths.ajouterFichier("/docs/maths/exercices.pdf", "Exercices");
+
+        Cours soutien = emploiDuTemps.ajouterCours("Soutien scolaire", "#e67e22");
+        soutien.ajouterFichierLie(exercices.getId());
+        maths.retirerFichier(exercices.getId());
+
+        List<Fichier> visibles = emploiDuTemps.fichiersVisibles(soutien);
+
+        assertTrue(visibles.isEmpty());
+    }
+
+    @Test
+    void trouverCoursDefautResoutLIdEnregistreDansLesParametres() {
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
+
+        assertTrue(emploiDuTemps.trouverCoursDefaut().isEmpty());
+
+        emploiDuTemps.getParametres().setCoursDefautId(maths.getId());
+
+        assertEquals(maths, emploiDuTemps.trouverCoursDefaut().orElseThrow());
+    }
 }
