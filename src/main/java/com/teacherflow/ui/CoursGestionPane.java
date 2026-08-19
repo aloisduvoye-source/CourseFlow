@@ -68,11 +68,7 @@ public class CoursGestionPane extends BorderPane {
         boutonNouveau.setMaxWidth(Double.MAX_VALUE);
         boutonNouveau.setOnAction(e -> creerCours());
 
-        Button boutonSupprimer = new Button("Supprimer le cours");
-        boutonSupprimer.setMaxWidth(Double.MAX_VALUE);
-        boutonSupprimer.setOnAction(e -> supprimerCoursSelectionne());
-
-        VBox colonne = new VBox(8, listeCours, boutonNouveau, boutonSupprimer);
+        VBox colonne = new VBox(8, listeCours, boutonNouveau);
         colonne.setPadding(new Insets(0, 12, 0, 0));
         colonne.setPrefWidth(220);
         return colonne;
@@ -138,19 +134,15 @@ public class CoursGestionPane extends BorderPane {
         notifierChangement();
     }
 
-    private void supprimerCoursSelectionne() {
-        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
-        if (selectionne == null) {
-            return;
-        }
+    private void supprimerCours(Cours cours) {
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION,
-                "Supprimer le cours \"" + selectionne.getNom() + "\" et ses créneaux associés ?");
+                "Supprimer le cours \"" + cours.getNom() + "\" et ses créneaux associés ?");
         confirmation.setTitle("Supprimer le cours");
         confirmation.setHeaderText(null);
         Optional<ButtonType> reponse = confirmation.showAndWait();
         if (reponse.isPresent() && reponse.get() == ButtonType.OK) {
-            emploiDuTemps.supprimerCours(selectionne.getId());
-            listeCours.getItems().remove(selectionne);
+            emploiDuTemps.supprimerCours(cours.getId());
+            listeCours.getItems().remove(cours);
             notifierChangement();
         }
     }
@@ -248,26 +240,42 @@ public class CoursGestionPane extends BorderPane {
                 (int) Math.round(couleur.getBlue() * 255));
     }
 
-    private static class CoursCell extends ListCell<Cours> {
+    private class CoursCell extends ListCell<Cours> {
         private final Circle pastille = new Circle(7);
+        private final Label libelle = new Label();
+        private final Button boutonSupprimer = new Button();
+        private final HBox ligne = new HBox(8);
 
         CoursCell() {
             pastille.setStroke(Color.WHITE);
             pastille.setStrokeWidth(1.5);
+
+            boutonSupprimer.setGraphic(Icons.poubelle());
+            boutonSupprimer.setOnAction(e -> {
+                Cours cours = getItem();
+                if (cours != null) {
+                    supprimerCours(cours);
+                }
+            });
+
+            Region espaceur = new Region();
+            HBox.setHgrow(espaceur, Priority.ALWAYS);
+
+            ligne.setAlignment(Pos.CENTER_LEFT);
+            ligne.getChildren().addAll(pastille, libelle, espaceur, boutonSupprimer);
         }
 
         @Override
         protected void updateItem(Cours cours, boolean vide) {
             super.updateItem(cours, vide);
             if (vide || cours == null) {
-                setText(null);
                 setGraphic(null);
                 return;
             }
             pastille.setFill(Color.web(cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT));
-            setGraphic(pastille);
             String nom = cours.getNom();
-            setText(nom == null || nom.isBlank() ? "(sans nom)" : nom);
+            libelle.setText(nom == null || nom.isBlank() ? "(sans nom)" : nom);
+            setGraphic(ligne);
         }
     }
 
