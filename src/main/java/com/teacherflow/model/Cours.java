@@ -19,6 +19,7 @@ public class Cours {
     private String couleur;
     private List<Fichier> fichiers = new ArrayList<>();
     private List<UUID> fichiersLies = new ArrayList<>();
+    private List<String> dossiersSuivis = new ArrayList<>();
 
     public Cours() {
     }
@@ -51,6 +52,16 @@ public class Cours {
 
     public void retirerFichierLie(UUID fichierId) {
         fichiersLies.remove(fichierId);
+    }
+
+    public void ajouterDossierSuivi(String chemin) {
+        if (!dossiersSuivis.contains(chemin)) {
+            dossiersSuivis.add(chemin);
+        }
+    }
+
+    public void retirerDossierSuivi(String chemin) {
+        dossiersSuivis.remove(chemin);
     }
 
     public UUID getId() {
@@ -91,6 +102,14 @@ public class Cours {
 
     public void setFichiersLies(List<UUID> fichiersLies) {
         this.fichiersLies = fichiersLies;
+    }
+
+    public List<String> getDossiersSuivis() {
+        return dossiersSuivis;
+    }
+
+    public void setDossiersSuivis(List<String> dossiersSuivis) {
+        this.dossiersSuivis = dossiersSuivis;
     }
 
     @Override

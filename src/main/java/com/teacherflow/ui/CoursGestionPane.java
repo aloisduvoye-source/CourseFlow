@@ -35,6 +35,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -52,6 +53,7 @@ public class CoursGestionPane extends BorderPane {
 
     private final ListView<Cours> listeCours = new ListView<>();
     private final ListView<Fichier> listeFichiers = new ListView<>();
+    private final ListView<String> listeDossiersLies = new ListView<>();
     private final ObservableList<Cours> tousLesCours = FXCollections.observableArrayList();
     private final FilteredList<Cours> coursFiltres = new FilteredList<>(tousLesCours);
     private final ObservableList<Fichier> tousLesFichiers = FXCollections.observableArrayList();
@@ -144,12 +146,20 @@ public class CoursGestionPane extends BorderPane {
 
         HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier, boutonAjouterLien, boutonLierFichier);
 
+        listeDossiersLies.setCellFactory(vue -> new DossierLieCell());
+        listeDossiersLies.setPrefHeight(80);
+
+        Button boutonActualiserDossiers = new Button("Actualiser les dossiers liés");
+        boutonActualiserDossiers.setOnAction(e -> actualiserDossiersLies());
+
         Label titreNomCouleur = new Label("Nom et couleur");
         Label titreFichiers = new Label("Fichiers du cours");
+        Label titreDossiersLies = new Label("Dossiers liés");
 
         panneauDetails.getChildren().addAll(
                 titreNomCouleur, ligneNomCouleur,
-                titreFichiers, ligneRecherche, listeFichiers, boutonsFichiers);
+                titreFichiers, ligneRecherche, listeFichiers, boutonsFichiers,
+                titreDossiersLies, listeDossiersLies, boutonActualiserDossiers);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
         return panneauDetails;
     }
@@ -209,6 +219,7 @@ public class CoursGestionPane extends BorderPane {
         tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(cours));
         rafraichirFiltreDossier(cours, false);
         fichiersFiltres.setPredicate(this::fichierCorrespond);
+        rafraichirDossiersLies(cours);
     }
 
     private void creerCours() {
@@ -288,12 +299,18 @@ public class CoursGestionPane extends BorderPane {
         if (dossier == null) {
             return;
         }
+        selectionne.ajouterDossierSuivi(dossier.getAbsolutePath());
+        rafraichirDossiersLies(selectionne);
+
         File[] fichiersDuDossier = dossier.listFiles(f -> f.isFile() && !f.isHidden());
         if (fichiersDuDossier == null || fichiersDuDossier.length == 0) {
-            Alert info = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier trouvé dans ce dossier.");
+            Alert info = new Alert(Alert.AlertType.INFORMATION,
+                    "Aucun fichier trouvé dans ce dossier. Il reste lié : les fichiers ajoutés "
+                            + "plus tard apparaîtront via \"Actualiser les dossiers liés\".");
             info.setTitle("Dossier vide");
             info.setHeaderText(null);
             info.showAndWait();
+            notifierChangement();
             return;
         }
         for (File fichier : fichiersDuDossier) {
@@ -301,6 +318,53 @@ public class CoursGestionPane extends BorderPane {
         }
         tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
         notifierChangement();
+    }
+
+    private void actualiserDossiersLies() {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        Set<String> cheminsExistants = selectionne.getFichiers().stream()
+                .map(Fichier::getChemin)
+                .collect(Collectors.toSet());
+        int nouveaux = 0;
+        for (String cheminDossier : selectionne.getDossiersSuivis()) {
+            File dossier = new File(cheminDossier);
+            File[] fichiersDuDossier = dossier.listFiles(f -> f.isFile() && !f.isHidden());
+            if (fichiersDuDossier == null) {
+                continue;
+            }
+            for (File fichier : fichiersDuDossier) {
+                if (cheminsExistants.add(fichier.getAbsolutePath())) {
+                    selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
+                    nouveaux++;
+                }
+            }
+        }
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
+        if (nouveaux > 0) {
+            notifierChangement();
+        }
+        Alert info = new Alert(Alert.AlertType.INFORMATION,
+                nouveaux > 0 ? nouveaux + " nouveau(x) fichier(s) importé(s)." : "Aucun nouveau fichier.");
+        info.setTitle("Dossiers liés actualisés");
+        info.setHeaderText(null);
+        info.showAndWait();
+    }
+
+    private void delierDossier(String cheminDossier) {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        selectionne.retirerDossierSuivi(cheminDossier);
+        rafraichirDossiersLies(selectionne);
+        notifierChangement();
+    }
+
+    private void rafraichirDossiersLies(Cours cours) {
+        listeDossiersLies.getItems().setAll(cours.getDossiersSuivis());
     }
 
     private void ajouterLienWeb() {
@@ -455,6 +519,40 @@ public class CoursGestionPane extends BorderPane {
             pastille.setFill(Color.web(cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT));
             String nom = cours.getNom();
             libelle.setText(nom == null || nom.isBlank() ? "(sans nom)" : nom);
+            setGraphic(ligne);
+        }
+    }
+
+    private class DossierLieCell extends ListCell<String> {
+        private final Label libelle = new Label();
+        private final Button boutonSupprimer = new Button();
+        private final HBox ligne = new HBox(8);
+
+        DossierLieCell() {
+            boutonSupprimer.setGraphic(Icons.poubelle());
+            boutonSupprimer.setOnAction(e -> {
+                String chemin = getItem();
+                if (chemin != null) {
+                    delierDossier(chemin);
+                }
+            });
+
+            ligne.prefWidthProperty().bind(listeDossiersLies.widthProperty().subtract(24));
+            libelle.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(libelle, Priority.ALWAYS);
+
+            ligne.setAlignment(Pos.CENTER_LEFT);
+            ligne.getChildren().addAll(libelle, boutonSupprimer);
+        }
+
+        @Override
+        protected void updateItem(String chemin, boolean vide) {
+            super.updateItem(chemin, vide);
+            if (vide || chemin == null) {
+                setGraphic(null);
+                return;
+            }
+            libelle.setText(chemin);
             setGraphic(ligne);
         }
     }
