@@ -5,6 +5,8 @@ import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.Parametres;
+import com.teacherflow.model.PlageHoraire;
 import com.teacherflow.util.NomsJours;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.event.Event;
@@ -47,15 +49,14 @@ import java.util.stream.Collectors;
 
 /**
  * Grille hebdomadaire (jours × heures) permettant d'assigner un {@link Cours} à chaque
- * {@link Creneau}, puis de le déplacer ou de le redimensionner directement à la souris
- * (par pas de {@value PAS_SNAP_MINUTES} minutes), ou de le modifier/supprimer via une
- * boîte de dialogue.
+ * {@link Creneau}, puis de le déplacer ou de le redimensionner directement à la souris,
+ * ou de le modifier/supprimer via une boîte de dialogue. Les jours affichés, l'incrément
+ * de déplacement et les plages horaires actives par jour viennent de {@link Parametres}.
  */
 public class EmploiDuTempsPane extends BorderPane {
 
     private static final LocalTime HEURE_DEBUT_GRILLE = LocalTime.of(7, 0);
     private static final LocalTime HEURE_FIN_GRILLE = LocalTime.of(20, 0);
-    private static final int PAS_SNAP_MINUTES = 10;
     private static final int PAS_AFFICHAGE_MINUTES = 30;
     private static final int DUREE_MIN_MINUTES = 10;
     private static final double PIXELS_PAR_MINUTE = 1.5;
@@ -66,11 +67,6 @@ public class EmploiDuTempsPane extends BorderPane {
     private static final double SEUIL_CLIC_PIXELS = 4;
     private static final double MARGE_VERTICALE = 10;
 
-    private static final DayOfWeek[] JOURS_AFFICHES = {
-            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
-            DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
-    };
-
     private enum ModeInteraction { DEPLACER, REDIMENSIONNER_HAUT, REDIMENSIONNER_BAS }
 
     private final EmploiDuTemps emploiDuTemps;
@@ -79,6 +75,11 @@ public class EmploiDuTempsPane extends BorderPane {
     private final HBox ligneColonnes = new HBox();
     private final ScrollPane defilement = new ScrollPane();
     private double largeurColonneJour = LARGEUR_COLONNE_JOUR_DEFAUT;
+    private DayOfWeek[] joursAffiches = {
+            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
+            DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
+    };
+    private int pasMinutes = 10;
 
     public EmploiDuTempsPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
@@ -99,7 +100,7 @@ public class EmploiDuTempsPane extends BorderPane {
     private void mettreAJourEntetes() {
         ligneEntetes.getChildren().clear();
         ligneEntetes.getChildren().add(espace(LARGEUR_COLONNE_HEURES));
-        for (DayOfWeek jour : JOURS_AFFICHES) {
+        for (DayOfWeek jour : joursAffiches) {
             Label enTete = new Label(NomsJours.nom(jour));
             enTete.setPrefWidth(largeurColonneJour);
             enTete.setAlignment(Pos.CENTER);
@@ -121,6 +122,13 @@ public class EmploiDuTempsPane extends BorderPane {
      * prend le relais).
      */
     public void rafraichir() {
+        Parametres parametres = emploiDuTemps.getParametres();
+        List<DayOfWeek> jours = parametres.getJoursAffiches();
+        if (!jours.isEmpty()) {
+            joursAffiches = jours.toArray(new DayOfWeek[0]);
+        }
+        pasMinutes = Math.max(1, parametres.getPasMinutes());
+
         largeurColonneJour = calculerLargeurColonneJour();
         mettreAJourEntetes();
 
@@ -139,7 +147,7 @@ public class EmploiDuTempsPane extends BorderPane {
             return LARGEUR_COLONNE_JOUR_DEFAUT;
         }
         double largeurJours = largeurDisponible - LARGEUR_COLONNE_HEURES;
-        return Math.max(LARGEUR_COLONNE_JOUR_MIN, largeurJours / JOURS_AFFICHES.length);
+        return Math.max(LARGEUR_COLONNE_JOUR_MIN, largeurJours / joursAffiches.length);
     }
 
     private Pane construireColonneHeures(double hauteur) {
@@ -164,7 +172,7 @@ public class EmploiDuTempsPane extends BorderPane {
      * seulement en Y (heure) lors d'un glisser.
      */
     private Pane construireGrilleUnique(double hauteur) {
-        double largeurTotale = JOURS_AFFICHES.length * largeurColonneJour;
+        double largeurTotale = joursAffiches.length * largeurColonneJour;
         Pane pane = new Pane();
         pane.setPrefSize(largeurTotale, hauteur);
         pane.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 0 1;");
@@ -187,7 +195,7 @@ public class EmploiDuTempsPane extends BorderPane {
             ligne.setMouseTransparent(true);
             pane.getChildren().add(ligne);
         }
-        for (int i = 1; i < JOURS_AFFICHES.length; i++) {
+        for (int i = 1; i < joursAffiches.length; i++) {
             Region separateur = new Region();
             separateur.setPrefSize(1, hauteur);
             separateur.setLayoutX(i * largeurColonneJour);
@@ -206,26 +214,37 @@ public class EmploiDuTempsPane extends BorderPane {
     }
 
     /**
-     * Ajoute une cellule cliquable par jour et par pas de {@link #PAS_SNAP_MINUTES} minutes,
-     * plutôt qu'un unique clic-n'importe-où sur toute la grille : cela limite les points de
-     * création possibles à un ensemble prévisible de blocs, au lieu d'une position pixel-perfect
+     * Ajoute une cellule cliquable par jour et par pas de {@link #pasMinutes} minutes, plutôt
+     * qu'un unique clic-n'importe-où sur toute la grille : cela limite les points de création
+     * possibles à un ensemble prévisible de blocs, au lieu d'une position pixel-perfect
      * arbitraire. Le déplacement/redimensionnement d'un créneau existant (glisser-déposer)
-     * n'est pas concerné et reste libre.
+     * n'est pas concerné et reste libre. Si des plages horaires sont définies pour un jour
+     * (via les paramètres), seules les cellules qu'elles couvrent sont cliquables ; les autres
+     * sont grisées et ignorent la souris.
      */
     private void ajouterCellulesCliquables(Pane pane) {
-        int nbCellules = minutesGrille() / PAS_SNAP_MINUTES;
-        for (int jourIndex = 0; jourIndex < JOURS_AFFICHES.length; jourIndex++) {
-            DayOfWeek jour = JOURS_AFFICHES[jourIndex];
+        int nbCellules = minutesGrille() / pasMinutes;
+        Parametres parametres = emploiDuTemps.getParametres();
+        for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
+            DayOfWeek jour = joursAffiches[jourIndex];
+            List<PlageHoraire> plages = parametres.plagesPour(jour);
             for (int i = 0; i < nbCellules; i++) {
-                int minuteDebut = i * PAS_SNAP_MINUTES;
+                int minuteDebut = i * pasMinutes;
                 LocalTime heureDebut = HEURE_DEBUT_GRILLE.plusMinutes(minuteDebut);
 
                 Region cellule = new Region();
                 cellule.setLayoutX(jourIndex * largeurColonneJour);
                 cellule.setLayoutY(MARGE_VERTICALE + minuteDebut * PIXELS_PAR_MINUTE);
-                cellule.setPrefSize(largeurColonneJour, PAS_SNAP_MINUTES * PIXELS_PAR_MINUTE);
-                cellule.setCursor(Cursor.HAND);
-                cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, heureDebut));
+                cellule.setPrefSize(largeurColonneJour, pasMinutes * PIXELS_PAR_MINUTE);
+
+                boolean active = plages.isEmpty() || plages.stream().anyMatch(p -> p.contient(heureDebut));
+                if (active) {
+                    cellule.setCursor(Cursor.HAND);
+                    cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, heureDebut));
+                } else {
+                    cellule.setStyle("-fx-background-color: #f0f0f0;");
+                    cellule.setMouseTransparent(true);
+                }
                 pane.getChildren().add(cellule);
             }
         }
@@ -235,9 +254,9 @@ public class EmploiDuTempsPane extends BorderPane {
         return (int) Duration.between(HEURE_DEBUT_GRILLE, HEURE_FIN_GRILLE).toMinutes();
     }
 
-    private static int indexDuJour(DayOfWeek jour) {
-        for (int i = 0; i < JOURS_AFFICHES.length; i++) {
-            if (JOURS_AFFICHES[i] == jour) {
+    private int indexDuJour(DayOfWeek jour) {
+        for (int i = 0; i < joursAffiches.length; i++) {
+            if (joursAffiches[i] == jour) {
                 return i;
             }
         }
@@ -246,7 +265,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
     /**
      * Un créneau affiché dans la grille : déplaçable (glisser le corps) et redimensionnable
-     * (glisser le bord haut ou bas), par pas de {@link #PAS_SNAP_MINUTES} minutes. Un clic
+     * (glisser le bord haut ou bas), par pas de {@link #pasMinutes} minutes. Un clic
      * sans déplacement ouvre la boîte de dialogue d'édition.
      */
     private final class BlocCreneau extends StackPane {
@@ -346,8 +365,8 @@ public class EmploiDuTempsPane extends BorderPane {
                 return;
             }
 
-            long pas = Math.round((deltaY / PIXELS_PAR_MINUTE) / PAS_SNAP_MINUTES);
-            int deltaMinutes = (int) (pas * PAS_SNAP_MINUTES);
+            long pas = Math.round((deltaY / PIXELS_PAR_MINUTE) / pasMinutes);
+            int deltaMinutes = (int) (pas * pasMinutes);
             int minGrille = toMinutes(HEURE_DEBUT_GRILLE);
             int maxGrille = toMinutes(HEURE_FIN_GRILLE);
 
@@ -360,7 +379,7 @@ public class EmploiDuTempsPane extends BorderPane {
                     nouveauDebut = clamp(minutesDebutInitial + deltaMinutes, minGrille, maxGrille - duree);
                     nouveauFin = nouveauDebut + duree;
                     int deltaJours = (int) Math.round(deltaX / largeurColonneJour);
-                    nouveauDayIndex = clamp(dayIndexInitial + deltaJours, 0, JOURS_AFFICHES.length - 1);
+                    nouveauDayIndex = clamp(dayIndexInitial + deltaJours, 0, joursAffiches.length - 1);
                 }
                 case REDIMENSIONNER_HAUT ->
                         nouveauDebut = clamp(minutesDebutInitial + deltaMinutes, minGrille, minutesFinInitial - DUREE_MIN_MINUTES);
@@ -381,7 +400,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
             int debutFinal = toMinutes(HEURE_DEBUT_GRILLE) + (int) Math.round((getLayoutY() - MARGE_VERTICALE) / PIXELS_PAR_MINUTE);
             int finFinal = debutFinal + (int) Math.round(getPrefHeight() / PIXELS_PAR_MINUTE);
-            creneau.setJour(JOURS_AFFICHES[dayIndexCourant]);
+            creneau.setJour(joursAffiches[dayIndexCourant]);
             creneau.setHeureDebut(minutesVersHeure(debutFinal));
             creneau.setHeureFin(minutesVersHeure(finFinal));
             notifierChangement();
@@ -571,7 +590,7 @@ public class EmploiDuTempsPane extends BorderPane {
         LocalTime t = HEURE_DEBUT_GRILLE;
         while (!t.isAfter(HEURE_FIN_GRILLE)) {
             limites.add(t);
-            t = t.plusMinutes(PAS_SNAP_MINUTES);
+            t = t.plusMinutes(pasMinutes);
         }
         return limites;
     }
