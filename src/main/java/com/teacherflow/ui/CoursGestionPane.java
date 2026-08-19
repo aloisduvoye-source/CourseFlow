@@ -1,6 +1,7 @@
 package com.teacherflow.ui;
 
 import com.teacherflow.model.Cours;
+import com.teacherflow.model.DossierReference;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
 import com.teacherflow.model.Parametres;
@@ -13,6 +14,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -38,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Écran de gestion des Cours : liste des cours existants, création/renommage/couleur,
@@ -52,6 +55,7 @@ public class CoursGestionPane extends BorderPane {
 
     private final ListView<Cours> listeCours = new ListView<>();
     private final ListView<Fichier> listeFichiers = new ListView<>();
+    private final ListView<DossierReference> listeDossiersReferences = new ListView<>();
     private final ObservableList<Cours> tousLesCours = FXCollections.observableArrayList();
     private final FilteredList<Cours> coursFiltres = new FilteredList<>(tousLesCours);
     private final ObservableList<Fichier> tousLesFichiers = FXCollections.observableArrayList();
@@ -127,20 +131,28 @@ public class CoursGestionPane extends BorderPane {
         Button boutonAjouterFichier = new Button("Ajouter des fichiers...");
         boutonAjouterFichier.setOnAction(e -> ajouterFichiers());
 
-        Button boutonAjouterDossier = new Button("Ajouter un dossier...");
-        boutonAjouterDossier.setOnAction(e -> ajouterDossier());
+        Button boutonReferencerDossier = new Button("Référencer un dossier...");
+        boutonReferencerDossier.setOnAction(e -> referencerDossier());
 
         Button boutonAjouterLien = new Button("Ajouter un lien web...");
         boutonAjouterLien.setOnAction(e -> ajouterLienWeb());
 
-        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier, boutonAjouterLien);
+        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonReferencerDossier, boutonAjouterLien);
+
+        listeDossiersReferences.setCellFactory(vue -> new DossierReferenceCell());
+        listeDossiersReferences.setPrefHeight(80);
+
+        Button boutonActualiserDossiers = new Button("Actualiser les dossiers référencés");
+        boutonActualiserDossiers.setOnAction(e -> actualiserDossiersReferences());
 
         Label titreNomCouleur = new Label("Nom et couleur");
         Label titreFichiers = new Label("Fichiers du cours");
+        Label titreDossiersReferences = new Label("Dossiers référencés");
 
         panneauDetails.getChildren().addAll(
                 titreNomCouleur, ligneNomCouleur,
-                titreFichiers, rechercheFichiers, listeFichiers, boutonsFichiers);
+                titreFichiers, rechercheFichiers, listeFichiers, boutonsFichiers,
+                titreDossiersReferences, listeDossiersReferences, boutonActualiserDossiers);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
         return panneauDetails;
     }
@@ -170,7 +182,12 @@ public class CoursGestionPane extends BorderPane {
         selecteurCouleur.setValue(Color.web(
                 cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT));
         rechercheFichiers.clear();
-        tousLesFichiers.setAll(cours.getFichiers());
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(cours));
+        rafraichirDossiersReferences(cours);
+    }
+
+    private void rafraichirDossiersReferences(Cours cours) {
+        listeDossiersReferences.getItems().setAll(cours.getDossiersReferences());
     }
 
     private void creerCours() {
@@ -234,35 +251,173 @@ public class CoursGestionPane extends BorderPane {
         for (File fichier : fichiers) {
             selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
         }
-        tousLesFichiers.setAll(selectionne.getFichiers());
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
         notifierChangement();
     }
 
-    private void ajouterDossier() {
+    private void referencerDossier() {
         Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
         if (selectionne == null) {
             return;
         }
-        DirectoryChooser selecteur = new DirectoryChooser();
-        selecteur.setTitle("Choisir un dossier pour \"" + selectionne.getNom() + "\"");
+        DirectoryChooser selecteurDossier = new DirectoryChooser();
+        selecteurDossier.setTitle("Choisir un dossier pour \"" + selectionne.getNom() + "\"");
         Window fenetre = getScene() != null ? getScene().getWindow() : null;
-        File dossier = selecteur.showDialog(fenetre);
+        File dossier = selecteurDossier.showDialog(fenetre);
         if (dossier == null) {
             return;
         }
-        File[] fichiersDuDossier = dossier.listFiles(f -> f.isFile() && !f.isHidden());
-        if (fichiersDuDossier == null || fichiersDuDossier.length == 0) {
-            Alert info = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier trouvé dans ce dossier.");
+
+        CheckBox caseRecursif = new CheckBox("Recherche récursive (inclure les sous-dossiers)");
+        Dialog<ButtonType> dialogueMode = new Dialog<>();
+        dialogueMode.setTitle("Référencer un dossier");
+        dialogueMode.getDialogPane().setContent(caseRecursif);
+        dialogueMode.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        Optional<ButtonType> reponseMode = dialogueMode.showAndWait();
+        if (reponseMode.isEmpty() || reponseMode.get() != ButtonType.OK) {
+            return;
+        }
+        boolean recursif = caseRecursif.isSelected();
+
+        DossierReference reference = new DossierReference(dossier.getAbsolutePath(), recursif);
+        selectionne.getDossiersReferences().add(reference);
+        rafraichirDossiersReferences(selectionne);
+
+        List<File> fichiersTrouves = scannerDossier(dossier, recursif);
+        if (fichiersTrouves.isEmpty()) {
+            Alert info = new Alert(Alert.AlertType.INFORMATION,
+                    "Aucun fichier trouvé dans ce dossier. Il reste référencé : les fichiers ajoutés "
+                            + "plus tard apparaîtront via \"Actualiser les dossiers référencés\".");
             info.setTitle("Dossier vide");
             info.setHeaderText(null);
             info.showAndWait();
+            notifierChangement();
             return;
         }
-        for (File fichier : fichiersDuDossier) {
+
+        List<File> choisis = choisirFichiers(
+                "Fichiers à importer depuis \"" + dossier.getName() + "\"", dossier, fichiersTrouves);
+        for (File fichier : choisis) {
             selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
+            reference.getFichiersImportes().add(fichier.getAbsolutePath());
         }
-        tousLesFichiers.setAll(selectionne.getFichiers());
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
         notifierChangement();
+    }
+
+    private void actualiserDossiersReferences() {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        int totalImportes = 0;
+        for (DossierReference reference : selectionne.getDossiersReferences()) {
+            File dossier = new File(reference.getChemin());
+            List<File> nouveaux = scannerDossier(dossier, reference.isRecursif()).stream()
+                    .filter(f -> !reference.getFichiersImportes().contains(f.getAbsolutePath()))
+                    .collect(Collectors.toList());
+            if (nouveaux.isEmpty()) {
+                continue;
+            }
+            List<File> choisis = choisirFichiers(
+                    "Nouveaux fichiers dans \"" + dossier.getName() + "\"", dossier, nouveaux);
+            for (File fichier : choisis) {
+                selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
+                reference.getFichiersImportes().add(fichier.getAbsolutePath());
+                totalImportes++;
+            }
+        }
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
+        if (totalImportes > 0) {
+            notifierChangement();
+        }
+        Alert info = new Alert(Alert.AlertType.INFORMATION,
+                totalImportes > 0 ? totalImportes + " nouveau(x) fichier(s) importé(s)." : "Aucun nouveau fichier.");
+        info.setTitle("Dossiers référencés actualisés");
+        info.setHeaderText(null);
+        info.showAndWait();
+    }
+
+    private void delierDossierReference(DossierReference reference) {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        selectionne.getDossiersReferences().remove(reference);
+        rafraichirDossiersReferences(selectionne);
+        notifierChangement();
+    }
+
+    private static List<File> scannerDossier(File dossier, boolean recursif) {
+        List<File> resultat = new ArrayList<>();
+        File[] enfants = dossier.listFiles();
+        if (enfants == null) {
+            return resultat;
+        }
+        for (File enfant : enfants) {
+            if (enfant.isHidden()) {
+                continue;
+            }
+            if (enfant.isFile()) {
+                resultat.add(enfant);
+            } else if (enfant.isDirectory() && recursif) {
+                resultat.addAll(scannerDossier(enfant, true));
+            }
+        }
+        return resultat;
+    }
+
+    /**
+     * Boîte de dialogue à cocher (tout coché par défaut) pour choisir lesquels des fichiers
+     * trouvés dans un dossier référencé importer réellement dans le cours.
+     */
+    private List<File> choisirFichiers(String titre, File dossierBase, List<File> candidats) {
+        Set<File> coches = new LinkedHashSet<>(candidats);
+
+        ListView<File> liste = new ListView<>();
+        liste.setPrefHeight(220);
+        liste.setPrefWidth(420);
+        liste.getItems().setAll(candidats);
+        liste.setCellFactory(vue -> new ListCell<>() {
+            private final CheckBox caseACocher = new CheckBox();
+
+            {
+                caseACocher.selectedProperty().addListener((obs, etait, est) -> {
+                    File fichier = getItem();
+                    if (fichier == null) {
+                        return;
+                    }
+                    if (est) {
+                        coches.add(fichier);
+                    } else {
+                        coches.remove(fichier);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(File fichier, boolean vide) {
+                super.updateItem(fichier, vide);
+                if (vide || fichier == null) {
+                    setGraphic(null);
+                    return;
+                }
+                caseACocher.setSelected(coches.contains(fichier));
+                caseACocher.setText(dossierBase.toPath().relativize(fichier.toPath()).toString());
+                setGraphic(caseACocher);
+            }
+        });
+
+        Dialog<ButtonType> dialogue = new Dialog<>();
+        dialogue.setTitle(titre);
+        dialogue.getDialogPane().setContent(liste);
+        dialogue.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Optional<ButtonType> resultat = dialogue.showAndWait();
+        if (resultat.isEmpty() || resultat.get() != ButtonType.OK) {
+            return List.of();
+        }
+        return candidats.stream().filter(coches::contains).collect(Collectors.toList());
     }
 
     private void ajouterLienWeb() {
@@ -288,7 +443,7 @@ public class CoursGestionPane extends BorderPane {
             return;
         }
         selectionne.ajouterFichier(url, url);
-        tousLesFichiers.setAll(selectionne.getFichiers());
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
         notifierChangement();
     }
 
@@ -314,6 +469,40 @@ public class CoursGestionPane extends BorderPane {
                 (int) Math.round(couleur.getRed() * 255),
                 (int) Math.round(couleur.getGreen() * 255),
                 (int) Math.round(couleur.getBlue() * 255));
+    }
+
+    private class DossierReferenceCell extends ListCell<DossierReference> {
+        private final Label libelle = new Label();
+        private final Button boutonSupprimer = new Button();
+        private final HBox ligne = new HBox(8);
+
+        DossierReferenceCell() {
+            boutonSupprimer.setGraphic(Icons.poubelle());
+            boutonSupprimer.setOnAction(e -> {
+                DossierReference reference = getItem();
+                if (reference != null) {
+                    delierDossierReference(reference);
+                }
+            });
+
+            ligne.prefWidthProperty().bind(listeDossiersReferences.widthProperty().subtract(24));
+            libelle.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(libelle, Priority.ALWAYS);
+
+            ligne.setAlignment(Pos.CENTER_LEFT);
+            ligne.getChildren().addAll(libelle, boutonSupprimer);
+        }
+
+        @Override
+        protected void updateItem(DossierReference reference, boolean vide) {
+            super.updateItem(reference, vide);
+            if (vide || reference == null) {
+                setGraphic(null);
+                return;
+            }
+            libelle.setText(reference.getChemin() + (reference.isRecursif() ? " (récursif)" : ""));
+            setGraphic(ligne);
+        }
     }
 
     private class CoursCell extends ListCell<Cours> {
