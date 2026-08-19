@@ -196,7 +196,7 @@ public class EmploiDuTempsPane extends BorderPane {
             pane.getChildren().add(separateur);
         }
 
-        pane.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jourDepuisX(e.getX()), heureDepuisY(e.getY())));
+        ajouterCellulesCliquables(pane);
 
         emploiDuTemps.getCreneaux().stream()
                 .filter(c -> indexDuJour(c.getJour()) >= 0)
@@ -205,15 +205,30 @@ public class EmploiDuTempsPane extends BorderPane {
         return pane;
     }
 
-    private LocalTime heureDepuisY(double y) {
-        long pas = Math.round(((y - MARGE_VERTICALE) / PIXELS_PAR_MINUTE) / PAS_SNAP_MINUTES);
-        int minutes = clamp((int) (pas * PAS_SNAP_MINUTES), 0, minutesGrille() - DUREE_MIN_MINUTES);
-        return HEURE_DEBUT_GRILLE.plusMinutes(minutes);
-    }
+    /**
+     * Ajoute une cellule cliquable par jour et par pas de {@link #PAS_SNAP_MINUTES} minutes,
+     * plutôt qu'un unique clic-n'importe-où sur toute la grille : cela limite les points de
+     * création possibles à un ensemble prévisible de blocs, au lieu d'une position pixel-perfect
+     * arbitraire. Le déplacement/redimensionnement d'un créneau existant (glisser-déposer)
+     * n'est pas concerné et reste libre.
+     */
+    private void ajouterCellulesCliquables(Pane pane) {
+        int nbCellules = minutesGrille() / PAS_SNAP_MINUTES;
+        for (int jourIndex = 0; jourIndex < JOURS_AFFICHES.length; jourIndex++) {
+            DayOfWeek jour = JOURS_AFFICHES[jourIndex];
+            for (int i = 0; i < nbCellules; i++) {
+                int minuteDebut = i * PAS_SNAP_MINUTES;
+                LocalTime heureDebut = HEURE_DEBUT_GRILLE.plusMinutes(minuteDebut);
 
-    private DayOfWeek jourDepuisX(double x) {
-        int index = clamp((int) (x / largeurColonneJour), 0, JOURS_AFFICHES.length - 1);
-        return JOURS_AFFICHES[index];
+                Region cellule = new Region();
+                cellule.setLayoutX(jourIndex * largeurColonneJour);
+                cellule.setLayoutY(MARGE_VERTICALE + minuteDebut * PIXELS_PAR_MINUTE);
+                cellule.setPrefSize(largeurColonneJour, PAS_SNAP_MINUTES * PIXELS_PAR_MINUTE);
+                cellule.setCursor(Cursor.HAND);
+                cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, heureDebut));
+                pane.getChildren().add(cellule);
+            }
+        }
     }
 
     private int minutesGrille() {
