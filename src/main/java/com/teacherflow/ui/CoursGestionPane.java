@@ -29,8 +29,10 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Écran de gestion des Cours : liste des cours existants, création/renommage/couleur,
@@ -146,7 +148,9 @@ public class CoursGestionPane extends BorderPane {
         String recherche = texte.toLowerCase();
         String libelle = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
                 ? fichier.getNomAffichage() : fichier.getChemin();
-        return libelle != null && libelle.toLowerCase().contains(recherche);
+        boolean libelleCorrespond = libelle != null && libelle.toLowerCase().contains(recherche);
+        boolean tagCorrespond = fichier.getTags().stream().anyMatch(tag -> tag.toLowerCase().contains(recherche));
+        return libelleCorrespond || tagCorrespond;
     }
 
     private void afficherDetails(Cours cours) {
@@ -349,10 +353,18 @@ public class CoursGestionPane extends BorderPane {
 
     private class FichierCell extends ListCell<Fichier> {
         private final Label libelle = new Label();
+        private final Button boutonTags = new Button("Tags");
         private final Button boutonSupprimer = new Button();
-        private final HBox ligne = new HBox();
+        private final HBox ligne = new HBox(8);
 
         FichierCell() {
+            boutonTags.setOnAction(e -> {
+                Fichier fichier = getItem();
+                if (fichier != null) {
+                    modifierTags(fichier);
+                }
+            });
+
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setOnAction(e -> {
                 Fichier fichier = getItem();
@@ -361,11 +373,12 @@ public class CoursGestionPane extends BorderPane {
                 }
             });
 
-            Region espaceur = new Region();
-            HBox.setHgrow(espaceur, Priority.ALWAYS);
+            ligne.prefWidthProperty().bind(listeFichiers.widthProperty().subtract(24));
+            libelle.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(libelle, Priority.ALWAYS);
 
             ligne.setAlignment(Pos.CENTER_LEFT);
-            ligne.getChildren().addAll(libelle, espaceur, boutonSupprimer);
+            ligne.getChildren().addAll(libelle, boutonTags, boutonSupprimer);
         }
 
         @Override
@@ -375,9 +388,32 @@ public class CoursGestionPane extends BorderPane {
                 setGraphic(null);
                 return;
             }
-            libelle.setText(fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
-                    ? fichier.getNomAffichage() : fichier.getChemin());
+            String texte = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
+                    ? fichier.getNomAffichage() : fichier.getChemin();
+            if (!fichier.getTags().isEmpty()) {
+                texte += "  [" + String.join(", ", fichier.getTags()) + "]";
+            }
+            libelle.setText(texte);
             setGraphic(ligne);
         }
+    }
+
+    private void modifierTags(Fichier fichier) {
+        TextInputDialog dialogue = new TextInputDialog(String.join(", ", fichier.getTags()));
+        dialogue.setTitle("Étiquettes");
+        dialogue.setHeaderText(null);
+        dialogue.setContentText("Étiquettes (séparées par des virgules) :");
+        Optional<String> resultat = dialogue.showAndWait();
+        if (resultat.isEmpty()) {
+            return;
+        }
+        List<String> tags = Arrays.stream(resultat.get().split(","))
+                .map(String::trim)
+                .filter(tag -> !tag.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+        fichier.setTags(tags);
+        listeFichiers.refresh();
+        notifierChangement();
     }
 }

@@ -1,5 +1,7 @@
 package com.teacherflow.model;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -11,6 +13,7 @@ public class Fichier {
     private UUID id;
     private String chemin;
     private String nomAffichage;
+    private List<String> tags = new ArrayList<>();
 
     public Fichier() {
     }
@@ -43,6 +46,14 @@ public class Fichier {
 
     public void setNomAffichage(String nomAffichage) {
         this.nomAffichage = nomAffichage;
+    }
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
     }
 
     @Override

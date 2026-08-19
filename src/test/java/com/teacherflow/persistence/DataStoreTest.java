@@ -36,6 +36,7 @@ class DataStoreTest {
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
         Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
         Fichier exercices = maths.ajouterFichier("/docs/maths/exercices-fractions.pdf", "Exercices");
+        exercices.setTags(List.of("à corriger", "brouillon"));
         Creneau creneau = emploiDuTemps.ajouterCreneau(
                 DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(9, 0), maths.getId());
         creneau.selectionnerFichier(exercices.getId());
@@ -50,6 +51,7 @@ class DataStoreTest {
         List<Fichier> fichiersResolus = recharge.fichiersPourCreneau(creneauRecharge);
         assertEquals(1, fichiersResolus.size());
         assertEquals("/docs/maths/exercices-fractions.pdf", fichiersResolus.get(0).getChemin());
+        assertEquals(List.of("à corriger", "brouillon"), fichiersResolus.get(0).getTags());
     }
 
     @Test
