@@ -4,6 +4,7 @@ import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.persistence.DataStore;
 import com.teacherflow.ui.CoursGestionPane;
 import com.teacherflow.ui.EmploiDuTempsPane;
+import com.teacherflow.ui.ParametresPane;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -32,10 +33,13 @@ public class App extends Application {
 
         CoursGestionPane vueCours = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
         EmploiDuTempsPane vueEmploiDuTemps = new EmploiDuTempsPane(emploiDuTemps, this::sauvegarder);
+        ParametresPane vueParametres = new ParametresPane(emploiDuTemps, this::sauvegarder);
 
         vueEmploiDuTemps.setVisible(false);
         vueEmploiDuTemps.setManaged(false);
-        StackPane contenu = new StackPane(vueCours, vueEmploiDuTemps);
+        vueParametres.setVisible(false);
+        vueParametres.setManaged(false);
+        StackPane contenu = new StackPane(vueCours, vueEmploiDuTemps, vueParametres);
 
         ToggleGroup groupeNavigation = new ToggleGroup();
         ToggleButton boutonCours = new ToggleButton("Cours");
@@ -47,18 +51,23 @@ public class App extends Application {
         boutonEmploiDuTemps.setToggleGroup(groupeNavigation);
         boutonEmploiDuTemps.setMaxWidth(Double.MAX_VALUE);
 
-        boutonCours.setOnAction(e -> afficherVue(vueCours, vueEmploiDuTemps));
+        ToggleButton boutonParametres = new ToggleButton("Paramètres");
+        boutonParametres.setToggleGroup(groupeNavigation);
+        boutonParametres.setMaxWidth(Double.MAX_VALUE);
+
+        boutonCours.setOnAction(e -> afficherVue(vueCours, vueCours, vueEmploiDuTemps, vueParametres));
         boutonEmploiDuTemps.setOnAction(e -> {
-            afficherVue(vueEmploiDuTemps, vueCours);
+            afficherVue(vueEmploiDuTemps, vueCours, vueEmploiDuTemps, vueParametres);
             vueEmploiDuTemps.rafraichir();
         });
+        boutonParametres.setOnAction(e -> afficherVue(vueParametres, vueCours, vueEmploiDuTemps, vueParametres));
 
         Label titreApp = new Label("TeacherFlow");
 
         Region espaceur = new Region();
         VBox.setVgrow(espaceur, Priority.ALWAYS);
 
-        VBox barreLaterale = new VBox(4, titreApp, boutonCours, boutonEmploiDuTemps);
+        VBox barreLaterale = new VBox(4, titreApp, boutonCours, boutonEmploiDuTemps, boutonParametres);
         barreLaterale.setPadding(new Insets(16, 8, 16, 8));
         barreLaterale.setPrefWidth(190);
 
@@ -74,11 +83,12 @@ public class App extends Application {
         stage.show();
     }
 
-    private void afficherVue(Node aAfficher, Node aCacher) {
-        aCacher.setVisible(false);
-        aCacher.setManaged(false);
-        aAfficher.setVisible(true);
-        aAfficher.setManaged(true);
+    private void afficherVue(Node aAfficher, Node... vues) {
+        for (Node vue : vues) {
+            boolean visible = vue == aAfficher;
+            vue.setVisible(visible);
+            vue.setManaged(visible);
+        }
     }
 
     private EmploiDuTemps chargerDonnees() {
