@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -99,7 +100,10 @@ public class CoursGestionPane extends BorderPane {
         Button boutonAjouterDossier = new Button("Ajouter un dossier...");
         boutonAjouterDossier.setOnAction(e -> ajouterDossier());
 
-        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier);
+        Button boutonAjouterLien = new Button("Ajouter un lien web...");
+        boutonAjouterLien.setOnAction(e -> ajouterLienWeb());
+
+        HBox boutonsFichiers = new HBox(8, boutonAjouterFichier, boutonAjouterDossier, boutonAjouterLien);
 
         Label titreNomCouleur = new Label("Nom et couleur");
         Label titreFichiers = new Label("Fichiers du cours");
@@ -212,6 +216,33 @@ public class CoursGestionPane extends BorderPane {
         for (File fichier : fichiersDuDossier) {
             selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
         }
+        listeFichiers.getItems().setAll(selectionne.getFichiers());
+        notifierChangement();
+    }
+
+    private void ajouterLienWeb() {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        TextInputDialog dialogue = new TextInputDialog();
+        dialogue.setTitle("Ajouter un lien web");
+        dialogue.setHeaderText(null);
+        dialogue.setContentText("URL :");
+        Optional<String> resultat = dialogue.showAndWait();
+        if (resultat.isEmpty() || resultat.get().isBlank()) {
+            return;
+        }
+        String url = resultat.get().trim();
+        if (!url.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.+")) {
+            Alert erreur = new Alert(Alert.AlertType.ERROR,
+                    "L'URL doit commencer par un schéma (ex. https://).");
+            erreur.setTitle("URL invalide");
+            erreur.setHeaderText(null);
+            erreur.showAndWait();
+            return;
+        }
+        selectionne.ajouterFichier(url, url);
         listeFichiers.getItems().setAll(selectionne.getFichiers());
         notifierChangement();
     }
