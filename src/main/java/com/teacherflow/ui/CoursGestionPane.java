@@ -6,6 +6,7 @@ import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
 import com.teacherflow.model.Parametres;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -22,6 +23,7 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -40,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -64,6 +67,9 @@ public class CoursGestionPane extends BorderPane {
     private final TextField rechercheFichiers = new TextField();
     private final TextField champNom = new TextField();
     private final ColorPicker selecteurCouleur = new ColorPicker();
+    private final CheckBox caseCoursDefaut = new CheckBox("Cours par défaut");
+    private final TitledPane panneauCoursDefaut = new TitledPane();
+    private final ListView<Fichier> listeFichiersCoursDefaut = new ListView<>();
     private final Label messageVide = new Label("Sélectionnez un cours ou créez-en un nouveau.");
     private final VBox panneauDetails = new VBox(12);
 
@@ -121,6 +127,13 @@ public class CoursGestionPane extends BorderPane {
         ligneNomCouleur.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(champNom, Priority.ALWAYS);
 
+        caseCoursDefaut.setOnAction(e -> toggleCoursDefaut());
+
+        listeFichiersCoursDefaut.setPrefHeight(140);
+        listeFichiersCoursDefaut.setCellFactory(CheckBoxListCell.forListView(this::proprieteFichierLie));
+        panneauCoursDefaut.setContent(listeFichiersCoursDefaut);
+        panneauCoursDefaut.setExpanded(false);
+
         listeFichiers.setCellFactory(vue -> new FichierCell());
         listeFichiers.setItems(fichiersFiltres);
         VBox.setVgrow(listeFichiers, Priority.ALWAYS);
@@ -150,9 +163,10 @@ public class CoursGestionPane extends BorderPane {
         Label titreDossiersReferences = new Label("Dossiers référencés");
 
         panneauDetails.getChildren().addAll(
-                titreNomCouleur, ligneNomCouleur,
+                titreNomCouleur, ligneNomCouleur, caseCoursDefaut,
                 titreFichiers, rechercheFichiers, listeFichiers, boutonsFichiers,
-                titreDossiersReferences, listeDossiersReferences, boutonActualiserDossiers);
+                titreDossiersReferences, listeDossiersReferences, boutonActualiserDossiers,
+                panneauCoursDefaut);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
         return panneauDetails;
     }
@@ -184,10 +198,70 @@ public class CoursGestionPane extends BorderPane {
         rechercheFichiers.clear();
         tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(cours));
         rafraichirDossiersReferences(cours);
+
+        UUID coursDefautId = emploiDuTemps.getParametres().getCoursDefautId();
+        boolean estCoursDefaut = cours.getId().equals(coursDefautId);
+        caseCoursDefaut.setSelected(estCoursDefaut);
+
+        Optional<Cours> coursDefaut = emploiDuTemps.trouverCoursDefaut();
+        boolean afficherPanneauDefaut = coursDefaut.isPresent() && !estCoursDefaut;
+        panneauCoursDefaut.setVisible(afficherPanneauDefaut);
+        panneauCoursDefaut.setManaged(afficherPanneauDefaut);
+        if (afficherPanneauDefaut) {
+            panneauCoursDefaut.setText("Cours par défaut : " + coursDefaut.get().getNom());
+            listeFichiersCoursDefaut.getItems().setAll(coursDefaut.get().getFichiers());
+        }
     }
 
     private void rafraichirDossiersReferences(Cours cours) {
         listeDossiersReferences.getItems().setAll(cours.getDossiersReferences());
+    }
+
+    private void toggleCoursDefaut() {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        emploiDuTemps.getParametres().setCoursDefautId(
+                caseCoursDefaut.isSelected() ? selectionne.getId() : null);
+        notifierChangement();
+        afficherDetails(selectionne);
+    }
+
+    private ObservableValue<Boolean> proprieteFichierLie(Fichier fichier) {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        boolean lie = selectionne != null && selectionne.getFichiersLies().contains(fichier.getId());
+        SimpleBooleanProperty propriete = new SimpleBooleanProperty(lie);
+        propriete.addListener((obs, etaitCoche, estCoche) -> {
+            Cours coursActuel = listeCours.getSelectionModel().getSelectedItem();
+            if (coursActuel == null) {
+                return;
+            }
+            if (estCoche) {
+                coursActuel.ajouterFichierLie(fichier.getId());
+            } else {
+                coursActuel.retirerFichierLie(fichier.getId());
+            }
+            tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(coursActuel));
+            notifierChangement();
+        });
+        return propriete;
+    }
+
+    private boolean estFichierLie(Fichier fichier) {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        return selectionne != null && selectionne.getFichiersLies().contains(fichier.getId());
+    }
+
+    private void delierFichier(Fichier fichier) {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        selectionne.retirerFichierLie(fichier.getId());
+        tousLesFichiers.remove(fichier);
+        listeFichiersCoursDefaut.refresh();
+        notifierChangement();
     }
 
     private void creerCours() {
@@ -562,7 +636,12 @@ public class CoursGestionPane extends BorderPane {
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setOnAction(e -> {
                 Fichier fichier = getItem();
-                if (fichier != null) {
+                if (fichier == null) {
+                    return;
+                }
+                if (estFichierLie(fichier)) {
+                    delierFichier(fichier);
+                } else {
                     retirerFichier(fichier);
                 }
             });
@@ -586,6 +665,9 @@ public class CoursGestionPane extends BorderPane {
                     ? fichier.getNomAffichage() : fichier.getChemin();
             if (!fichier.getTags().isEmpty()) {
                 texte += "  [" + String.join(", ", fichier.getTags()) + "]";
+            }
+            if (estFichierLie(fichier)) {
+                texte += " (lié)";
             }
             libelle.setText(texte);
             setGraphic(ligne);
