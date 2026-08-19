@@ -43,8 +43,6 @@ import java.util.Optional;
  */
 public class ParametresPane extends BorderPane {
 
-    private static final LocalTime HEURE_DEBUT = LocalTime.of(7, 0);
-    private static final LocalTime HEURE_FIN = LocalTime.of(20, 0);
     private static final int PAS_AFFICHAGE_MINUTES = 30;
     private static final int DUREE_MIN_MINUTES = 10;
     private static final int DUREE_DEFAUT_MINUTES = 60;
@@ -60,6 +58,7 @@ public class ParametresPane extends BorderPane {
     private final Parametres parametres;
     private final Runnable surChangement;
     private final Pane grilleBlocs = new Pane();
+    private final HBox ligneGrille = new HBox();
 
     public ParametresPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.parametres = emploiDuTemps.getParametres();
@@ -67,13 +66,9 @@ public class ParametresPane extends BorderPane {
 
         setPadding(new Insets(16));
 
-        double hauteurGrille = minutesGrille() * PIXELS_PAR_MINUTE + 2 * MARGE_VERTICALE;
-        grilleBlocs.setPrefSize(LARGEUR_BLOC, hauteurGrille);
         grilleBlocs.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 1;");
         grilleBlocs.setOnMouseClicked(this::surClicGrilleVide);
-        redessinerGrilleBlocs();
-
-        HBox ligneGrille = new HBox(construireColonneHeures(hauteurGrille), grilleBlocs);
+        actualiserGrilleBlocs();
 
         Label titreBlocs = titreSection("Blocs horaires (identiques chaque jour)");
         Label aideBlocs = new Label("Clique dans la zone libre pour ajouter un bloc, glisse-le pour le déplacer "
@@ -85,6 +80,7 @@ public class ParametresPane extends BorderPane {
         VBox contenu = new VBox(20,
                 construireSectionJours(),
                 construireSectionIncrement(),
+                construireSectionPlageGrille(),
                 new VBox(6, titreBlocs, aideBlocs, ligneGrille));
         contenu.setPadding(new Insets(0, 12, 0, 0));
 
@@ -133,11 +129,58 @@ public class ParametresPane extends BorderPane {
         return ligne;
     }
 
+    private HBox construireSectionPlageGrille() {
+        List<LocalTime> options = optionsHeuresGrille();
+
+        ComboBox<LocalTime> choixDebut = new ComboBox<>();
+        choixDebut.getItems().addAll(options);
+        choixDebut.setValue(parametres.getHeureDebutGrille());
+
+        ComboBox<LocalTime> choixFin = new ComboBox<>();
+        choixFin.getItems().addAll(options);
+        choixFin.setValue(parametres.getHeureFinGrille());
+
+        choixDebut.setOnAction(e -> {
+            LocalTime valeur = choixDebut.getValue();
+            if (valeur == null || !valeur.isBefore(parametres.getHeureFinGrille())) {
+                choixDebut.setValue(parametres.getHeureDebutGrille());
+                return;
+            }
+            parametres.setHeureDebutGrille(valeur);
+            actualiserGrilleBlocs();
+            notifierChangement();
+        });
+        choixFin.setOnAction(e -> {
+            LocalTime valeur = choixFin.getValue();
+            if (valeur == null || !valeur.isAfter(parametres.getHeureDebutGrille())) {
+                choixFin.setValue(parametres.getHeureFinGrille());
+                return;
+            }
+            parametres.setHeureFinGrille(valeur);
+            actualiserGrilleBlocs();
+            notifierChangement();
+        });
+
+        HBox ligne = new HBox(8, new Label("Plage horaire de la grille"), choixDebut, new Label("à"), choixFin);
+        ligne.setAlignment(Pos.CENTER_LEFT);
+        return ligne;
+    }
+
+    private static List<LocalTime> optionsHeuresGrille() {
+        List<LocalTime> options = new ArrayList<>();
+        LocalTime heure = LocalTime.MIDNIGHT;
+        for (int i = 0; i < 48; i++) {
+            options.add(heure);
+            heure = heure.plusMinutes(30);
+        }
+        return options;
+    }
+
     private Pane construireColonneHeures(double hauteur) {
         Pane pane = new Pane();
         pane.setPrefSize(LARGEUR_COLONNE_HEURES, hauteur);
         for (int minute = 0; minute <= minutesGrille(); minute += PAS_AFFICHAGE_MINUTES) {
-            LocalTime heure = HEURE_DEBUT.plusMinutes(minute);
+            LocalTime heure = parametres.getHeureDebutGrille().plusMinutes(minute);
             if (heure.getMinute() == 0) {
                 Label label = new Label(heure.toString());
                 label.setStyle("-fx-text-fill: gray; -fx-font-size: 10;");
@@ -147,6 +190,13 @@ public class ParametresPane extends BorderPane {
             }
         }
         return pane;
+    }
+
+    private void actualiserGrilleBlocs() {
+        double hauteurGrille = minutesGrille() * PIXELS_PAR_MINUTE + 2 * MARGE_VERTICALE;
+        grilleBlocs.setPrefSize(LARGEUR_BLOC, hauteurGrille);
+        ligneGrille.getChildren().setAll(construireColonneHeures(hauteurGrille), grilleBlocs);
+        redessinerGrilleBlocs();
     }
 
     private void redessinerGrilleBlocs() {
@@ -170,8 +220,8 @@ public class ParametresPane extends BorderPane {
         minuteClic = Math.round((float) minuteClic / pas) * pas;
         minuteClic = clamp(minuteClic, 0, minutesGrille() - DUREE_MIN_MINUTES);
 
-        LocalTime debut = HEURE_DEBUT.plusMinutes(minuteClic);
-        LocalTime finMax = HEURE_FIN;
+        LocalTime debut = parametres.getHeureDebutGrille().plusMinutes(minuteClic);
+        LocalTime finMax = parametres.getHeureFinGrille();
         LocalTime fin = debut.plusMinutes(DUREE_DEFAUT_MINUTES);
         if (fin.isAfter(finMax)) {
             fin = finMax;
@@ -242,8 +292,8 @@ public class ParametresPane extends BorderPane {
     private List<LocalTime> genererLimites() {
         List<LocalTime> limites = new ArrayList<>();
         int pas = Math.max(1, parametres.getPasMinutes());
-        LocalTime t = HEURE_DEBUT;
-        while (!t.isAfter(HEURE_FIN)) {
+        LocalTime t = parametres.getHeureDebutGrille();
+        while (!t.isAfter(parametres.getHeureFinGrille())) {
             limites.add(t);
             t = t.plusMinutes(pas);
         }
@@ -251,7 +301,7 @@ public class ParametresPane extends BorderPane {
     }
 
     private int minutesGrille() {
-        return (int) Duration.between(HEURE_DEBUT, HEURE_FIN).toMinutes();
+        return (int) Duration.between(parametres.getHeureDebutGrille(), parametres.getHeureFinGrille()).toMinutes();
     }
 
     private static Label titreSection(String texte) {
@@ -317,7 +367,7 @@ public class ParametresPane extends BorderPane {
 
         private void actualiser(int debutMinutes, int finMinutes) {
             setLayoutX(2);
-            setLayoutY(MARGE_VERTICALE + (debutMinutes - toMinutes(HEURE_DEBUT)) * PIXELS_PAR_MINUTE);
+            setLayoutY(MARGE_VERTICALE + (debutMinutes - toMinutes(parametres.getHeureDebutGrille())) * PIXELS_PAR_MINUTE);
             setPrefHeight(Math.max(DUREE_MIN_MINUTES, finMinutes - debutMinutes) * PIXELS_PAR_MINUTE);
             libelle.setText(minutesVersHeure(debutMinutes) + " - " + minutesVersHeure(finMinutes));
         }
@@ -358,8 +408,8 @@ public class ParametresPane extends BorderPane {
             int pas = Math.max(1, parametres.getPasMinutes());
             long pasArrondi = Math.round((deltaY / PIXELS_PAR_MINUTE) / pas);
             int deltaMinutes = (int) (pasArrondi * pas);
-            int minGrille = toMinutes(HEURE_DEBUT);
-            int maxGrille = toMinutes(HEURE_FIN);
+            int minGrille = toMinutes(parametres.getHeureDebutGrille());
+            int maxGrille = toMinutes(parametres.getHeureFinGrille());
 
             int nouveauDebut = minutesDebutInitial;
             int nouveauFin = minutesFinInitial;
@@ -386,7 +436,7 @@ public class ParametresPane extends BorderPane {
                 return;
             }
 
-            int debutFinal = toMinutes(HEURE_DEBUT) + (int) Math.round((getLayoutY() - MARGE_VERTICALE) / PIXELS_PAR_MINUTE);
+            int debutFinal = toMinutes(parametres.getHeureDebutGrille()) + (int) Math.round((getLayoutY() - MARGE_VERTICALE) / PIXELS_PAR_MINUTE);
             int finFinal = debutFinal + (int) Math.round(getPrefHeight() / PIXELS_PAR_MINUTE);
             bloc.setDebut(minutesVersHeure(debutFinal));
             bloc.setFin(minutesVersHeure(finFinal));
