@@ -234,7 +234,7 @@ public class CoursGestionPane extends BorderPane {
     private TitledPane construireLigneDossierReference(Cours cours, DossierReference reference) {
         TitledPane panneau = new TitledPane();
         panneau.setGraphic(Icons.dossier());
-        panneau.setText(reference.getChemin() + (reference.isRecursif() ? " (récursif)" : ""));
+        panneau.setText(reference.getChemin());
         panneau.setExpanded(false);
         panneau.setMaxWidth(Double.MAX_VALUE);
         panneau.setContent(new VBox());
@@ -248,7 +248,7 @@ public class CoursGestionPane extends BorderPane {
 
     private VBox construireContenuDossierReference(Cours cours, DossierReference reference) {
         File dossierBase = new File(reference.getChemin());
-        List<File> fichiersTrouves = scannerDossier(dossierBase, reference.isRecursif());
+        List<File> fichiersTrouves = scannerDossier(dossierBase);
 
         VBox contenu = new VBox(4);
         contenu.setPadding(new Insets(4, 0, 4, 12));
@@ -256,7 +256,7 @@ public class CoursGestionPane extends BorderPane {
             contenu.getChildren().add(new Label("(aucun fichier trouvé)"));
         } else {
             for (File fichier : fichiersTrouves) {
-                CheckBox caseFichier = new CheckBox(dossierBase.toPath().relativize(fichier.toPath()).toString());
+                CheckBox caseFichier = new CheckBox(fichier.getName());
                 caseFichier.setSelected(reference.getFichiersImportes().contains(fichier.getAbsolutePath()));
                 caseFichier.setOnAction(e -> toggleFichierDossierReference(cours, reference, fichier, caseFichier.isSelected()));
                 contenu.getChildren().add(caseFichier);
@@ -412,7 +412,7 @@ public class CoursGestionPane extends BorderPane {
             return;
         }
 
-        CheckBox caseRecursif = new CheckBox("Recherche récursive (inclure les sous-dossiers)");
+        CheckBox caseRecursif = new CheckBox("Recherche récursive (référencer aussi chaque sous-dossier séparément)");
         Dialog<ButtonType> dialogueMode = new Dialog<>();
         dialogueMode.setTitle("Référencer un dossier");
         dialogueMode.getDialogPane().setContent(caseRecursif);
@@ -421,12 +421,41 @@ public class CoursGestionPane extends BorderPane {
         if (reponseMode.isEmpty() || reponseMode.get() != ButtonType.OK) {
             return;
         }
-        DossierReference reference = new DossierReference(dossier.getAbsolutePath(), caseRecursif.isSelected());
-        selectionne.getDossiersReferences().add(reference);
-        TitledPane nouvelleLigne = construireLigneDossierReference(selectionne, reference);
-        nouvelleLigne.setExpanded(true);
-        conteneurDossiersReferences.getChildren().add(nouvelleLigne);
+
+        List<File> dossiersAReferencer = caseRecursif.isSelected() ? listerArborescence(dossier) : List.of(dossier);
+        TitledPane premiereLigne = null;
+        for (File dossierAReferencer : dossiersAReferencer) {
+            DossierReference reference = new DossierReference(dossierAReferencer.getAbsolutePath());
+            selectionne.getDossiersReferences().add(reference);
+            TitledPane ligne = construireLigneDossierReference(selectionne, reference);
+            conteneurDossiersReferences.getChildren().add(ligne);
+            if (premiereLigne == null) {
+                premiereLigne = ligne;
+            }
+        }
+        if (premiereLigne != null) {
+            premiereLigne.setExpanded(true);
+        }
         notifierChangement();
+    }
+
+    /**
+     * @return le dossier donné suivi de chacun de ses sous-dossiers (à toute profondeur),
+     * pour créer une {@link DossierReference} indépendante par dossier de l'arborescence
+     * plutôt qu'une seule référence "profonde" — délier l'un n'affecte pas les autres.
+     */
+    private static List<File> listerArborescence(File racine) {
+        List<File> resultat = new ArrayList<>();
+        resultat.add(racine);
+        File[] enfants = racine.listFiles();
+        if (enfants != null) {
+            for (File enfant : enfants) {
+                if (enfant.isDirectory() && !enfant.isHidden()) {
+                    resultat.addAll(listerArborescence(enfant));
+                }
+            }
+        }
+        return resultat;
     }
 
     /**
@@ -450,20 +479,15 @@ public class CoursGestionPane extends BorderPane {
         notifierChangement();
     }
 
-    private static List<File> scannerDossier(File dossier, boolean recursif) {
+    private static List<File> scannerDossier(File dossier) {
         List<File> resultat = new ArrayList<>();
         File[] enfants = dossier.listFiles();
         if (enfants == null) {
             return resultat;
         }
         for (File enfant : enfants) {
-            if (enfant.isHidden()) {
-                continue;
-            }
-            if (enfant.isFile()) {
+            if (enfant.isFile() && !enfant.isHidden()) {
                 resultat.add(enfant);
-            } else if (enfant.isDirectory() && recursif) {
-                resultat.addAll(scannerDossier(enfant, true));
             }
         }
         return resultat;

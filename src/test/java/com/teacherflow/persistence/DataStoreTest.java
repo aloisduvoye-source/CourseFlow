@@ -110,7 +110,7 @@ class DataStoreTest {
 
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
         Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
-        DossierReference reference = new DossierReference("/docs/maths", true);
+        DossierReference reference = new DossierReference("/docs/maths");
         reference.getFichiersImportes().add("/docs/maths/exercices.pdf");
         maths.getDossiersReferences().add(reference);
 
@@ -119,7 +119,6 @@ class DataStoreTest {
 
         DossierReference referenceRechargee = recharge.getCours().get(0).getDossiersReferences().get(0);
         assertEquals("/docs/maths", referenceRechargee.getChemin());
-        assertTrue(referenceRechargee.isRecursif());
         assertEquals(List.of("/docs/maths/exercices.pdf"), referenceRechargee.getFichiersImportes());
     }
 }
