@@ -214,37 +214,31 @@ public class EmploiDuTempsPane extends BorderPane {
     }
 
     /**
-     * Ajoute une cellule cliquable par jour et par pas de {@link #pasMinutes} minutes, plutôt
-     * qu'un unique clic-n'importe-où sur toute la grille : cela limite les points de création
-     * possibles à un ensemble prévisible de blocs, au lieu d'une position pixel-perfect
-     * arbitraire. Le déplacement/redimensionnement d'un créneau existant (glisser-déposer)
-     * n'est pas concerné et reste libre. Si des plages horaires sont définies pour un jour
-     * (via les paramètres), seules les cellules qu'elles couvrent sont cliquables ; les autres
-     * sont grisées et ignorent la souris.
+     * Ajoute une zone cliquable par jour pour chaque bloc horaire défini dans les paramètres
+     * (ex. 9h-10h puis 10h20-11h20), plutôt qu'un unique clic-n'importe-où sur toute la
+     * grille : cela limite les points de création possibles à un ensemble prévisible de
+     * blocs, identique chaque jour. Le déplacement/redimensionnement d'un créneau existant
+     * (glisser-déposer) n'est pas concerné et reste libre.
      */
     private void ajouterCellulesCliquables(Pane pane) {
-        int nbCellules = minutesGrille() / pasMinutes;
-        Parametres parametres = emploiDuTemps.getParametres();
+        List<PlageHoraire> blocs = emploiDuTemps.getParametres().getBlocs();
+        int debutGrille = toMinutes(HEURE_DEBUT_GRILLE);
         for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
             DayOfWeek jour = joursAffiches[jourIndex];
-            List<PlageHoraire> plages = parametres.plagesPour(jour);
-            for (int i = 0; i < nbCellules; i++) {
-                int minuteDebut = i * pasMinutes;
-                LocalTime heureDebut = HEURE_DEBUT_GRILLE.plusMinutes(minuteDebut);
+            for (PlageHoraire bloc : blocs) {
+                int minuteDebut = Math.max(0, toMinutes(bloc.getDebut()) - debutGrille);
+                int minuteFin = Math.min(minutesGrille(), toMinutes(bloc.getFin()) - debutGrille);
+                if (minuteFin <= minuteDebut) {
+                    continue;
+                }
 
                 Region cellule = new Region();
                 cellule.setLayoutX(jourIndex * largeurColonneJour);
                 cellule.setLayoutY(MARGE_VERTICALE + minuteDebut * PIXELS_PAR_MINUTE);
-                cellule.setPrefSize(largeurColonneJour, pasMinutes * PIXELS_PAR_MINUTE);
-
-                boolean active = plages.isEmpty() || plages.stream().anyMatch(p -> p.contient(heureDebut));
-                if (active) {
-                    cellule.setCursor(Cursor.HAND);
-                    cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, heureDebut));
-                } else {
-                    cellule.setStyle("-fx-background-color: #f0f0f0;");
-                    cellule.setMouseTransparent(true);
-                }
+                cellule.setPrefSize(largeurColonneJour, (minuteFin - minuteDebut) * PIXELS_PAR_MINUTE);
+                cellule.setCursor(Cursor.HAND);
+                cellule.setStyle("-fx-background-color: rgba(52, 152, 219, 0.08);");
+                cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, bloc.getDebut(), bloc.getFin()));
                 pane.getChildren().add(cellule);
             }
         }
@@ -393,7 +387,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
         private void surRelachement(MouseEvent e) {
             if (!enTrainDeBouger) {
-                ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut());
+                ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut(), creneau.getHeureFin());
                 e.consume();
                 return;
             }
@@ -408,7 +402,8 @@ public class EmploiDuTempsPane extends BorderPane {
         }
     }
 
-    private void ouvrirDialogueCreneau(Creneau creneauExistant, DayOfWeek jour, LocalTime heureDebutParDefaut) {
+    private void ouvrirDialogueCreneau(Creneau creneauExistant, DayOfWeek jour, LocalTime heureDebutParDefaut,
+            LocalTime heureFinParDefaut) {
         if (emploiDuTemps.getCours().isEmpty()) {
             Alert alerte = new Alert(Alert.AlertType.INFORMATION,
                     "Crée d'abord un cours dans l'onglet \"Cours\" avant de remplir l'emploi du temps.");
@@ -419,8 +414,10 @@ public class EmploiDuTempsPane extends BorderPane {
         }
 
         List<LocalTime> limites = genererLimites();
-        List<LocalTime> optionsDebut = limites.subList(0, limites.size() - 1);
-        List<LocalTime> optionsFin = limites.subList(1, limites.size());
+        List<LocalTime> optionsDebut = avecValeur(limites.subList(0, limites.size() - 1),
+                creneauExistant != null ? creneauExistant.getHeureDebut() : heureDebutParDefaut);
+        List<LocalTime> optionsFin = avecValeur(limites.subList(1, limites.size()),
+                creneauExistant != null ? creneauExistant.getHeureFin() : heureFinParDefaut);
 
         ComboBox<Cours> choixCours = new ComboBox<>();
         choixCours.getItems().addAll(emploiDuTemps.getCours());
@@ -447,9 +444,7 @@ public class EmploiDuTempsPane extends BorderPane {
             coursInitial = emploiDuTemps.getCours().get(0);
             coursInitial.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
             choixDebut.setValue(heureDebutParDefaut);
-            LocalTime finParDefaut = heureDebutParDefaut.plusHours(1);
-            choixFin.setValue(optionsFin.contains(finParDefaut)
-                    ? finParDefaut : optionsFin.get(optionsFin.size() - 1));
+            choixFin.setValue(heureFinParDefaut);
         }
         choixCours.setValue(coursInitial);
 
@@ -593,6 +588,20 @@ public class EmploiDuTempsPane extends BorderPane {
             t = t.plusMinutes(pasMinutes);
         }
         return limites;
+    }
+
+    /**
+     * @return {@code options} augmentée de {@code valeur} si elle n'y figure pas déjà (triée),
+     * pour garantir qu'un horaire de bloc non aligné sur {@link #pasMinutes} reste sélectionnable.
+     */
+    private static List<LocalTime> avecValeur(List<LocalTime> options, LocalTime valeur) {
+        if (valeur == null || options.contains(valeur)) {
+            return options;
+        }
+        List<LocalTime> resultat = new ArrayList<>(options);
+        resultat.add(valeur);
+        resultat.sort(LocalTime::compareTo);
+        return resultat;
     }
 
     private void notifierChangement() {
