@@ -9,7 +9,8 @@ import java.util.UUID;
 /**
  * Un cours réutilisable (ex. "6e A - Mathématiques") avec sa bibliothèque de fichiers.
  * Les {@link Creneau} ne font que sélectionner un sous-ensemble de ces fichiers,
- * ils n'en possèdent pas de copie.
+ * ils n'en possèdent pas de copie. Un cours peut aussi référencer des fichiers possédés par
+ * un autre cours ({@link #fichiersLies}), sans les dupliquer non plus.
  */
 public class Cours {
 
@@ -17,6 +18,7 @@ public class Cours {
     private String nom;
     private String couleur;
     private List<Fichier> fichiers = new ArrayList<>();
+    private List<UUID> fichiersLies = new ArrayList<>();
 
     public Cours() {
     }
@@ -39,6 +41,16 @@ public class Cours {
 
     public Optional<Fichier> trouverFichier(UUID fichierId) {
         return fichiers.stream().filter(f -> f.getId().equals(fichierId)).findFirst();
+    }
+
+    public void ajouterFichierLie(UUID fichierId) {
+        if (!fichiersLies.contains(fichierId)) {
+            fichiersLies.add(fichierId);
+        }
+    }
+
+    public void retirerFichierLie(UUID fichierId) {
+        fichiersLies.remove(fichierId);
     }
 
     public UUID getId() {
@@ -71,6 +83,14 @@ public class Cours {
 
     public void setFichiers(List<Fichier> fichiers) {
         this.fichiers = fichiers;
+    }
+
+    public List<UUID> getFichiersLies() {
+        return fichiersLies;
+    }
+
+    public void setFichiersLies(List<UUID> fichiersLies) {
+        this.fichiersLies = fichiersLies;
     }
 
     @Override

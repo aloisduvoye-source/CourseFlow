@@ -57,6 +57,26 @@ class DataStoreTest {
     }
 
     @Test
+    void sauvegarderPuisRechargerRestitueLesFichiersLies(@TempDir Path repertoireTemp) throws IOException {
+        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
+
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
+        Fichier exercices = maths.ajouterFichier("/docs/maths/exercices.pdf", "Exercices");
+        Cours soutien = emploiDuTemps.ajouterCours("Soutien scolaire", "#e67e22");
+        soutien.ajouterFichierLie(exercices.getId());
+
+        dataStore.sauvegarder(emploiDuTemps);
+        EmploiDuTemps recharge = dataStore.charger();
+
+        Cours soutienRecharge = recharge.getCours().stream()
+                .filter(c -> c.getNom().equals("Soutien scolaire"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of(exercices.getId()), soutienRecharge.getFichiersLies());
+        assertEquals(1, recharge.fichiersVisibles(soutienRecharge).size());
+    }
+
+    @Test
     void sauvegarderPuisRechargerRestitueLesParametres(@TempDir Path repertoireTemp) throws IOException {
         DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
 

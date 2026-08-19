@@ -74,6 +74,26 @@ public class EmploiDuTemps {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * @return les fichiers possédés par ce cours, plus ceux liés depuis d'autres cours
+     * ({@link Cours#getFichiersLies()}) résolus par leur identifiant. Un lien vers un fichier
+     * qui n'existe plus (cours ou fichier supprimé entre-temps) est silencieusement ignoré.
+     */
+    public List<Fichier> fichiersVisibles(Cours cours) {
+        List<Fichier> resultat = new ArrayList<>(cours.getFichiers());
+        for (UUID fichierId : cours.getFichiersLies()) {
+            trouverFichierPartage(fichierId).ifPresent(resultat::add);
+        }
+        return resultat;
+    }
+
+    private Optional<Fichier> trouverFichierPartage(UUID fichierId) {
+        return cours.stream()
+                .flatMap(c -> c.getFichiers().stream())
+                .filter(f -> f.getId().equals(fichierId))
+                .findFirst();
+    }
+
     public List<Cours> getCours() {
         return cours;
     }
