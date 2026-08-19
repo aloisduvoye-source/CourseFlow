@@ -55,8 +55,6 @@ import java.util.stream.Collectors;
  */
 public class EmploiDuTempsPane extends BorderPane {
 
-    private static final LocalTime HEURE_DEBUT_GRILLE = LocalTime.of(7, 0);
-    private static final LocalTime HEURE_FIN_GRILLE = LocalTime.of(20, 0);
     private static final int PAS_AFFICHAGE_MINUTES = 30;
     private static final int DUREE_MIN_MINUTES = 10;
     private static final double PIXELS_PAR_MINUTE = 1.5;
@@ -80,6 +78,8 @@ public class EmploiDuTempsPane extends BorderPane {
             DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
     };
     private int pasMinutes = 10;
+    private LocalTime heureDebutGrille = LocalTime.of(7, 0);
+    private LocalTime heureFinGrille = LocalTime.of(20, 0);
 
     public EmploiDuTempsPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
@@ -128,6 +128,8 @@ public class EmploiDuTempsPane extends BorderPane {
             joursAffiches = jours.toArray(new DayOfWeek[0]);
         }
         pasMinutes = Math.max(1, parametres.getPasMinutes());
+        heureDebutGrille = parametres.getHeureDebutGrille();
+        heureFinGrille = parametres.getHeureFinGrille();
 
         largeurColonneJour = calculerLargeurColonneJour();
         mettreAJourEntetes();
@@ -154,7 +156,7 @@ public class EmploiDuTempsPane extends BorderPane {
         Pane pane = new Pane();
         pane.setPrefSize(LARGEUR_COLONNE_HEURES, hauteur);
         for (int minute = 0; minute <= minutesGrille(); minute += PAS_AFFICHAGE_MINUTES) {
-            LocalTime heure = HEURE_DEBUT_GRILLE.plusMinutes(minute);
+            LocalTime heure = heureDebutGrille.plusMinutes(minute);
             if (heure.getMinute() == 0) {
                 Label label = new Label(heure.toString());
                 label.setStyle("-fx-text-fill: gray; -fx-font-size: 10;");
@@ -222,7 +224,7 @@ public class EmploiDuTempsPane extends BorderPane {
      */
     private void ajouterCellulesCliquables(Pane pane) {
         List<PlageHoraire> blocs = emploiDuTemps.getParametres().getBlocs();
-        int debutGrille = toMinutes(HEURE_DEBUT_GRILLE);
+        int debutGrille = toMinutes(heureDebutGrille);
         for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
             DayOfWeek jour = joursAffiches[jourIndex];
             for (PlageHoraire bloc : blocs) {
@@ -245,7 +247,7 @@ public class EmploiDuTempsPane extends BorderPane {
     }
 
     private int minutesGrille() {
-        return (int) Duration.between(HEURE_DEBUT_GRILLE, HEURE_FIN_GRILLE).toMinutes();
+        return (int) Duration.between(heureDebutGrille, heureFinGrille).toMinutes();
     }
 
     private int indexDuJour(DayOfWeek jour) {
@@ -307,7 +309,7 @@ public class EmploiDuTempsPane extends BorderPane {
         private void actualiser(int dayIndex, int debutMinutes, int finMinutes) {
             dayIndexCourant = dayIndex;
             setLayoutX(dayIndex * largeurColonneJour + 2);
-            setLayoutY(MARGE_VERTICALE + (debutMinutes - toMinutes(HEURE_DEBUT_GRILLE)) * PIXELS_PAR_MINUTE);
+            setLayoutY(MARGE_VERTICALE + (debutMinutes - toMinutes(heureDebutGrille)) * PIXELS_PAR_MINUTE);
             setPrefHeight(Math.max(DUREE_MIN_MINUTES, finMinutes - debutMinutes) * PIXELS_PAR_MINUTE);
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String nomCours = cours != null ? cours.getNom() : "(cours supprimé)";
@@ -361,8 +363,8 @@ public class EmploiDuTempsPane extends BorderPane {
 
             long pas = Math.round((deltaY / PIXELS_PAR_MINUTE) / pasMinutes);
             int deltaMinutes = (int) (pas * pasMinutes);
-            int minGrille = toMinutes(HEURE_DEBUT_GRILLE);
-            int maxGrille = toMinutes(HEURE_FIN_GRILLE);
+            int minGrille = toMinutes(heureDebutGrille);
+            int maxGrille = toMinutes(heureFinGrille);
 
             int nouveauDayIndex = dayIndexInitial;
             int nouveauDebut = minutesDebutInitial;
@@ -392,7 +394,7 @@ public class EmploiDuTempsPane extends BorderPane {
                 return;
             }
 
-            int debutFinal = toMinutes(HEURE_DEBUT_GRILLE) + (int) Math.round((getLayoutY() - MARGE_VERTICALE) / PIXELS_PAR_MINUTE);
+            int debutFinal = toMinutes(heureDebutGrille) + (int) Math.round((getLayoutY() - MARGE_VERTICALE) / PIXELS_PAR_MINUTE);
             int finFinal = debutFinal + (int) Math.round(getPrefHeight() / PIXELS_PAR_MINUTE);
             creneau.setJour(joursAffiches[dayIndexCourant]);
             creneau.setHeureDebut(minutesVersHeure(debutFinal));
@@ -582,8 +584,8 @@ public class EmploiDuTempsPane extends BorderPane {
 
     private List<LocalTime> genererLimites() {
         List<LocalTime> limites = new ArrayList<>();
-        LocalTime t = HEURE_DEBUT_GRILLE;
-        while (!t.isAfter(HEURE_FIN_GRILLE)) {
+        LocalTime t = heureDebutGrille;
+        while (!t.isAfter(heureFinGrille)) {
             limites.add(t);
             t = t.plusMinutes(pasMinutes);
         }
