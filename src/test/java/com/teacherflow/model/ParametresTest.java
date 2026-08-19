@@ -19,6 +19,14 @@ class ParametresTest {
     }
 
     @Test
+    void parDefautLaGrilleVaDeSeptHeuresAVingtHeures() {
+        Parametres parametres = new Parametres();
+
+        assertEquals(LocalTime.of(7, 0), parametres.getHeureDebutGrille());
+        assertEquals(LocalTime.of(20, 0), parametres.getHeureFinGrille());
+    }
+
+    @Test
     void parDefautDesBlocsHorairesSontDefinis() {
         Parametres parametres = new Parametres();
 

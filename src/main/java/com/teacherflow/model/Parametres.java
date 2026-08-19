@@ -6,10 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Réglages de l'emploi du temps : quels jours afficher, l'incrément minimal (en minutes)
- * pour le déplacement/redimensionnement des créneaux, et les blocs horaires prédéfinis
- * (ex. 9h-10h puis 10h20-11h20) dans lesquels un nouveau créneau peut être créé. Ce modèle
- * de blocs est identique pour tous les jours affichés.
+ * Réglages de l'emploi du temps : quels jours afficher, la plage horaire globale de la
+ * grille, l'incrément minimal (en minutes) pour le déplacement/redimensionnement des
+ * créneaux, et les blocs horaires prédéfinis (ex. 9h-10h puis 10h20-11h20) dans lesquels
+ * un nouveau créneau peut être créé. Ce modèle de blocs est identique pour tous les jours
+ * affichés.
  */
 public class Parametres {
 
@@ -17,9 +18,13 @@ public class Parametres {
             DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
             DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY);
     private static final int PAS_MINUTES_PAR_DEFAUT = 10;
+    private static final LocalTime HEURE_DEBUT_GRILLE_PAR_DEFAUT = LocalTime.of(7, 0);
+    private static final LocalTime HEURE_FIN_GRILLE_PAR_DEFAUT = LocalTime.of(20, 0);
 
     private List<DayOfWeek> joursAffiches = new ArrayList<>(JOURS_PAR_DEFAUT);
     private int pasMinutes = PAS_MINUTES_PAR_DEFAUT;
+    private LocalTime heureDebutGrille = HEURE_DEBUT_GRILLE_PAR_DEFAUT;
+    private LocalTime heureFinGrille = HEURE_FIN_GRILLE_PAR_DEFAUT;
     private List<PlageHoraire> blocs = new ArrayList<>(blocsParDefaut());
 
     private static List<PlageHoraire> blocsParDefaut() {
@@ -47,6 +52,22 @@ public class Parametres {
 
     public void setPasMinutes(int pasMinutes) {
         this.pasMinutes = pasMinutes;
+    }
+
+    public LocalTime getHeureDebutGrille() {
+        return heureDebutGrille;
+    }
+
+    public void setHeureDebutGrille(LocalTime heureDebutGrille) {
+        this.heureDebutGrille = heureDebutGrille;
+    }
+
+    public LocalTime getHeureFinGrille() {
+        return heureFinGrille;
+    }
+
+    public void setHeureFinGrille(LocalTime heureFinGrille) {
+        this.heureFinGrille = heureFinGrille;
     }
 
     public List<PlageHoraire> getBlocs() {
