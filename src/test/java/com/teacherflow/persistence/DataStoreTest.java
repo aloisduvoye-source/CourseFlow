@@ -59,16 +59,16 @@ class DataStoreTest {
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
         emploiDuTemps.getParametres().setJoursAffiches(List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
         emploiDuTemps.getParametres().setPasMinutes(15);
-        emploiDuTemps.getParametres().getPlagesParJour().put(DayOfWeek.MONDAY, List.of(
-                new PlageHoraire(LocalTime.of(8, 0), LocalTime.of(12, 0)),
-                new PlageHoraire(LocalTime.of(13, 30), LocalTime.of(17, 0))));
+        emploiDuTemps.getParametres().setBlocs(List.of(
+                new PlageHoraire(LocalTime.of(9, 0), LocalTime.of(10, 0)),
+                new PlageHoraire(LocalTime.of(10, 20), LocalTime.of(11, 20))));
 
         dataStore.sauvegarder(emploiDuTemps);
         EmploiDuTemps recharge = dataStore.charger();
 
         assertEquals(List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY), recharge.getParametres().getJoursAffiches());
         assertEquals(15, recharge.getParametres().getPasMinutes());
-        assertEquals(2, recharge.getParametres().plagesPour(DayOfWeek.MONDAY).size());
-        assertEquals(LocalTime.of(13, 30), recharge.getParametres().plagesPour(DayOfWeek.MONDAY).get(1).getDebut());
+        assertEquals(2, recharge.getParametres().getBlocs().size());
+        assertEquals(LocalTime.of(10, 20), recharge.getParametres().getBlocs().get(1).getDebut());
     }
 }

@@ -2,12 +2,11 @@ package com.teacherflow.model;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class ParametresTest {
 
@@ -20,18 +19,21 @@ class ParametresTest {
     }
 
     @Test
-    void unJourSansPlageDefinieRenvoieUneListeVide() {
+    void parDefautDesBlocsHorairesSontDefinis() {
         Parametres parametres = new Parametres();
 
-        assertTrue(parametres.plagesPour(DayOfWeek.MONDAY).isEmpty());
+        assertFalse(parametres.getBlocs().isEmpty());
+        assertEquals(LocalTime.of(8, 0), parametres.getBlocs().get(0).getDebut());
     }
 
     @Test
-    void plagesPourRenvoieLesPlagesDefinies() {
+    void lesBlocsPeuventEtreRemplaces() {
         Parametres parametres = new Parametres();
-        PlageHoraire matin = new PlageHoraire(LocalTime.of(8, 0), LocalTime.of(12, 0));
-        parametres.getPlagesParJour().put(DayOfWeek.WEDNESDAY, List.of(matin));
+        PlageHoraire matin = new PlageHoraire(LocalTime.of(9, 0), LocalTime.of(10, 0));
+        PlageHoraire aprèsPause = new PlageHoraire(LocalTime.of(10, 20), LocalTime.of(11, 20));
 
-        assertEquals(List.of(matin), parametres.plagesPour(DayOfWeek.WEDNESDAY));
+        parametres.setBlocs(List.of(matin, aprèsPause));
+
+        assertEquals(List.of(matin, aprèsPause), parametres.getBlocs());
     }
 }
