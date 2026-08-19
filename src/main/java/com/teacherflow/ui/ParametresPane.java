@@ -8,6 +8,8 @@ import javafx.event.Event;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
@@ -23,7 +25,14 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalTime;
@@ -56,12 +65,14 @@ public class ParametresPane extends BorderPane {
     private enum ModeInteraction { DEPLACER, REDIMENSIONNER_HAUT, REDIMENSIONNER_BAS }
 
     private final Parametres parametres;
+    private final Path fichierDonnees;
     private final Runnable surChangement;
     private final Pane grilleBlocs = new Pane();
     private final HBox ligneGrille = new HBox();
 
-    public ParametresPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
+    public ParametresPane(EmploiDuTemps emploiDuTemps, Path fichierDonnees, Runnable surChangement) {
         this.parametres = emploiDuTemps.getParametres();
+        this.fichierDonnees = fichierDonnees;
         this.surChangement = surChangement;
 
         setPadding(new Insets(16));
@@ -81,7 +92,8 @@ public class ParametresPane extends BorderPane {
                 construireSectionJours(),
                 construireSectionIncrement(),
                 construireSectionPlageGrille(),
-                new VBox(6, titreBlocs, aideBlocs, ligneGrille));
+                new VBox(6, titreBlocs, aideBlocs, ligneGrille),
+                construireSectionSauvegarde());
         contenu.setPadding(new Insets(0, 12, 0, 0));
 
         ScrollPane defilement = new ScrollPane(contenu);
@@ -174,6 +186,73 @@ public class ParametresPane extends BorderPane {
             heure = heure.plusMinutes(30);
         }
         return options;
+    }
+
+    private VBox construireSectionSauvegarde() {
+        Button boutonExporter = new Button("Exporter la configuration...");
+        boutonExporter.setOnAction(e -> exporterConfiguration());
+
+        Button boutonImporter = new Button("Importer une configuration...");
+        boutonImporter.setOnAction(e -> importerConfiguration());
+
+        HBox boutons = new HBox(8, boutonExporter, boutonImporter);
+        return new VBox(6, titreSection("Sauvegarde"), boutons);
+    }
+
+    private void exporterConfiguration() {
+        FileChooser selecteur = new FileChooser();
+        selecteur.setTitle("Exporter la configuration");
+        selecteur.setInitialFileName("teacherflow-data.json");
+        selecteur.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
+        File destination = selecteur.showSaveDialog(fenetreCourante());
+        if (destination == null) {
+            return;
+        }
+        try {
+            Files.copy(fichierDonnees, destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            informer("Export réussi", "Configuration exportée vers " + destination + ".");
+        } catch (IOException e) {
+            informer("Export impossible", "Échec de l'export : " + e.getMessage());
+        }
+    }
+
+    private void importerConfiguration() {
+        FileChooser selecteur = new FileChooser();
+        selecteur.setTitle("Importer une configuration");
+        selecteur.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
+        File source = selecteur.showOpenDialog(fenetreCourante());
+        if (source == null) {
+            return;
+        }
+
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION,
+                "Remplacer les données actuelles par le contenu de \"" + source.getName() + "\" ? "
+                        + "L'application devra être relancée pour afficher les nouvelles données.");
+        confirmation.setTitle("Importer une configuration");
+        confirmation.setHeaderText(null);
+        Optional<ButtonType> reponse = confirmation.showAndWait();
+        if (reponse.isEmpty() || reponse.get() != ButtonType.OK) {
+            return;
+        }
+
+        try {
+            Files.createDirectories(fichierDonnees.getParent());
+            Files.copy(source.toPath(), fichierDonnees, StandardCopyOption.REPLACE_EXISTING);
+            informer("Import réussi", "Configuration importée. Ferme et relance l'application pour voir les nouvelles données.");
+        } catch (IOException e) {
+            informer("Import impossible", "Échec de l'import : " + e.getMessage());
+        }
+    }
+
+    private Window fenetreCourante() {
+        return getScene() != null ? getScene().getWindow() : null;
+    }
+
+    private static void informer(String titre, String message) {
+        Alert info = new Alert(Alert.AlertType.INFORMATION, message);
+        info.setTitle(titre);
+        info.setHeaderText(null);
+        info.showAndWait();
     }
 
     private Pane construireColonneHeures(double hauteur) {

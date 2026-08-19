@@ -33,7 +33,7 @@ public class App extends Application {
 
         CoursGestionPane vueCours = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
         EmploiDuTempsPane vueEmploiDuTemps = new EmploiDuTempsPane(emploiDuTemps, this::sauvegarder);
-        ParametresPane vueParametres = new ParametresPane(emploiDuTemps, this::sauvegarder);
+        ParametresPane vueParametres = new ParametresPane(emploiDuTemps, dataStore.getFichierDonnees(), this::sauvegarder);
 
         vueEmploiDuTemps.setVisible(false);
         vueEmploiDuTemps.setManaged(false);
