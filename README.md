@@ -178,12 +178,22 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 
 ### Phase 6 — Confort & robustesse
 - Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur
+- Annuler/rétablir (Ctrl+Z) sur l'emploi du temps, pour rattraper un créneau déplacé ou supprimé par erreur
 - Édition rapide (glisser-déposer de fichiers, réorganisation, duplication de créneau/semaine)
 - Recherche/filtre dans la liste des cours et fichiers
+- Étiquettes/tags sur les fichiers (ex. "à corriger", "brouillon") pour trier indépendamment du cours
+- Aperçu rapide d'un fichier (PDF/image) directement dans l'appli, sans ouvrir le logiciel externe
 - Sauvegarde/export de la configuration (pour changer de machine ou sauvegarder)
+- Dossiers virtuels dans un Cours pour regrouper des fichiers par partie/chapitre (pas de dossiers réels sur le disque — juste un regroupement dans l'appli)
+- Lier un fichier d'un Cours à un autre Cours, sans dupliquer le fichier
+- Ajout de liens web (URL) comme "fichiers" ouvrables au même titre que les fichiers locaux
+- Suppression d'un Cours via la même icône corbeille que la suppression de fichier (cohérence visuelle)
+- Refonte graphique professionnelle, sobre mais réactive : thème(s), animations/transitions, micro-interactions — remplace le rendu par défaut JavaFX utilisé jusqu'ici (le style avait été volontairement mis de côté jusqu'à cette phase)
+- Section "Accueil" dans la barre latérale : équivalent graphique de la commande `lecture`, propose directement les fichiers du créneau de l'heure avec boutons précédent/suivant (pour enchaîner sans effet de battement entre deux créneaux)
 
 ### Phase 7 — Fonctionnalités avancées (optionnel, post-MVP)
 - Gestion de semaines alternées (semaine A / semaine B)
+- Enregistrement de configurations de semaine nommées, réutilisables (au-delà de la simple alternance A/B)
 - Notifications/rappels avant le début d'un créneau
 - Historique ou statistiques d'usage
 - Synchronisation multi-appareils
