@@ -16,6 +16,7 @@ public class EmploiDuTemps {
 
     private List<Cours> cours = new ArrayList<>();
     private List<Creneau> creneaux = new ArrayList<>();
+    private Parametres parametres = new Parametres();
 
     public EmploiDuTemps() {
     }
@@ -87,5 +88,13 @@ public class EmploiDuTemps {
 
     public void setCreneaux(List<Creneau> creneaux) {
         this.creneaux = creneaux;
+    }
+
+    public Parametres getParametres() {
+        return parametres;
+    }
+
+    public void setParametres(Parametres parametres) {
+        this.parametres = parametres;
     }
 }

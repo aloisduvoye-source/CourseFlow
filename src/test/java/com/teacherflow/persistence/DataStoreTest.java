@@ -4,6 +4,7 @@ import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.PlageHoraire;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -49,5 +50,25 @@ class DataStoreTest {
         List<Fichier> fichiersResolus = recharge.fichiersPourCreneau(creneauRecharge);
         assertEquals(1, fichiersResolus.size());
         assertEquals("/docs/maths/exercices-fractions.pdf", fichiersResolus.get(0).getChemin());
+    }
+
+    @Test
+    void sauvegarderPuisRechargerRestitueLesParametres(@TempDir Path repertoireTemp) throws IOException {
+        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
+
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        emploiDuTemps.getParametres().setJoursAffiches(List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
+        emploiDuTemps.getParametres().setPasMinutes(15);
+        emploiDuTemps.getParametres().getPlagesParJour().put(DayOfWeek.MONDAY, List.of(
+                new PlageHoraire(LocalTime.of(8, 0), LocalTime.of(12, 0)),
+                new PlageHoraire(LocalTime.of(13, 30), LocalTime.of(17, 0))));
+
+        dataStore.sauvegarder(emploiDuTemps);
+        EmploiDuTemps recharge = dataStore.charger();
+
+        assertEquals(List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY), recharge.getParametres().getJoursAffiches());
+        assertEquals(15, recharge.getParametres().getPasMinutes());
+        assertEquals(2, recharge.getParametres().plagesPour(DayOfWeek.MONDAY).size());
+        assertEquals(LocalTime.of(13, 30), recharge.getParametres().plagesPour(DayOfWeek.MONDAY).get(1).getDebut());
     }
 }
