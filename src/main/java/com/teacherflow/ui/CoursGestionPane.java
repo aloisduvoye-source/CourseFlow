@@ -3,6 +3,8 @@ package com.teacherflow.ui;
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.Parametres;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -12,11 +14,13 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -29,10 +33,11 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 /**
  * Écran de gestion des Cours : liste des cours existants, création/renommage/couleur,
@@ -399,20 +404,52 @@ public class CoursGestionPane extends BorderPane {
     }
 
     private void modifierTags(Fichier fichier) {
-        TextInputDialog dialogue = new TextInputDialog(String.join(", ", fichier.getTags()));
+        Parametres parametres = emploiDuTemps.getParametres();
+        Set<String> tagsCoches = new LinkedHashSet<>(fichier.getTags());
+
+        ListView<String> listeTags = new ListView<>();
+        listeTags.setPrefHeight(140);
+        listeTags.setCellFactory(CheckBoxListCell.forListView(tag -> {
+            SimpleBooleanProperty propriete = new SimpleBooleanProperty(tagsCoches.contains(tag));
+            propriete.addListener((obs, etaitCoche, estCoche) -> {
+                if (estCoche) {
+                    tagsCoches.add(tag);
+                } else {
+                    tagsCoches.remove(tag);
+                }
+            });
+            return propriete;
+        }));
+        listeTags.getItems().setAll(parametres.getTagsDisponibles());
+
+        TextField champNouveauTag = new TextField();
+        champNouveauTag.setPromptText("Nouveau tag...");
+        Button boutonAjouterTag = new Button("Ajouter");
+        boutonAjouterTag.setOnAction(e -> {
+            String nouveauTag = champNouveauTag.getText().trim();
+            if (nouveauTag.isBlank() || parametres.getTagsDisponibles().contains(nouveauTag)) {
+                return;
+            }
+            parametres.getTagsDisponibles().add(nouveauTag);
+            tagsCoches.add(nouveauTag);
+            listeTags.getItems().setAll(parametres.getTagsDisponibles());
+            champNouveauTag.clear();
+            notifierChangement();
+        });
+        HBox ligneAjout = new HBox(8, champNouveauTag, boutonAjouterTag);
+
+        VBox contenu = new VBox(8, listeTags, ligneAjout);
+
+        Dialog<ButtonType> dialogue = new Dialog<>();
         dialogue.setTitle("Étiquettes");
-        dialogue.setHeaderText(null);
-        dialogue.setContentText("Étiquettes (séparées par des virgules) :");
-        Optional<String> resultat = dialogue.showAndWait();
-        if (resultat.isEmpty()) {
+        dialogue.getDialogPane().setContent(contenu);
+        dialogue.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Optional<ButtonType> resultat = dialogue.showAndWait();
+        if (resultat.isEmpty() || resultat.get() != ButtonType.OK) {
             return;
         }
-        List<String> tags = Arrays.stream(resultat.get().split(","))
-                .map(String::trim)
-                .filter(tag -> !tag.isBlank())
-                .distinct()
-                .collect(Collectors.toList());
-        fichier.setTags(tags);
+        fichier.setTags(new ArrayList<>(tagsCoches));
         listeFichiers.refresh();
         notifierChangement();
     }
