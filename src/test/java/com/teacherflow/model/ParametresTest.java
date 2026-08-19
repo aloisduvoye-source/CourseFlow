@@ -7,6 +7,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ParametresTest {
 
@@ -43,5 +44,19 @@ class ParametresTest {
         parametres.setBlocs(List.of(matin, aprèsPause));
 
         assertEquals(List.of(matin, aprèsPause), parametres.getBlocs());
+    }
+
+    @Test
+    void parDefautLeVocabulaireDeTagsContientDmTdCorrectionEtCm() {
+        Parametres parametres = new Parametres();
+
+        assertEquals(List.of("dm", "td", "correction", "cm"), parametres.getTagsDisponibles());
+    }
+
+    @Test
+    void parDefautAucunCoursParDefautNestDesigne() {
+        Parametres parametres = new Parametres();
+
+        assertNull(parametres.getCoursDefautId());
     }
 }
