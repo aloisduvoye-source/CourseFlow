@@ -14,7 +14,6 @@ public class Fichier {
     private String chemin;
     private String nomAffichage;
     private List<String> tags = new ArrayList<>();
-    private String dossier;
 
     public Fichier() {
     }
@@ -55,14 +54,6 @@ public class Fichier {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
-    }
-
-    public String getDossier() {
-        return dossier;
-    }
-
-    public void setDossier(String dossier) {
-        this.dossier = dossier;
     }
 
     @Override

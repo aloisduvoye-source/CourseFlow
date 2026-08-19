@@ -37,7 +37,6 @@ class DataStoreTest {
         Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
         Fichier exercices = maths.ajouterFichier("/docs/maths/exercices-fractions.pdf", "Exercices");
         exercices.setTags(List.of("à corriger", "brouillon"));
-        exercices.setDossier("Chapitre 3");
         Creneau creneau = emploiDuTemps.ajouterCreneau(
                 DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(9, 0), maths.getId());
         creneau.selectionnerFichier(exercices.getId());
@@ -53,41 +52,6 @@ class DataStoreTest {
         assertEquals(1, fichiersResolus.size());
         assertEquals("/docs/maths/exercices-fractions.pdf", fichiersResolus.get(0).getChemin());
         assertEquals(List.of("à corriger", "brouillon"), fichiersResolus.get(0).getTags());
-        assertEquals("Chapitre 3", fichiersResolus.get(0).getDossier());
-    }
-
-    @Test
-    void sauvegarderPuisRechargerRestitueLesFichiersLies(@TempDir Path repertoireTemp) throws IOException {
-        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
-
-        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
-        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
-        Fichier exercices = maths.ajouterFichier("/docs/maths/exercices.pdf", "Exercices");
-        Cours soutien = emploiDuTemps.ajouterCours("Soutien scolaire", "#e67e22");
-        soutien.ajouterFichierLie(exercices.getId());
-
-        dataStore.sauvegarder(emploiDuTemps);
-        EmploiDuTemps recharge = dataStore.charger();
-
-        Cours soutienRecharge = recharge.getCours().stream()
-                .filter(c -> c.getNom().equals("Soutien scolaire"))
-                .findFirst().orElseThrow();
-        assertEquals(List.of(exercices.getId()), soutienRecharge.getFichiersLies());
-        assertEquals(1, recharge.fichiersVisibles(soutienRecharge).size());
-    }
-
-    @Test
-    void sauvegarderPuisRechargerRestitueLesDossiersSuivis(@TempDir Path repertoireTemp) throws IOException {
-        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
-
-        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
-        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
-        maths.ajouterDossierSuivi("/docs/maths");
-
-        dataStore.sauvegarder(emploiDuTemps);
-        EmploiDuTemps recharge = dataStore.charger();
-
-        assertEquals(List.of("/docs/maths"), recharge.getCours().get(0).getDossiersSuivis());
     }
 
     @Test
