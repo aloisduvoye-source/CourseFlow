@@ -123,7 +123,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 ## État actuel du projet
 
 - **Socle (modèle + persistance)** ✅ — [Fichier](src/main/java/com/teacherflow/model/Fichier.java), [Cours](src/main/java/com/teacherflow/model/Cours.java), [Creneau](src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) ; persistance JSON via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson) dans `~/.teacherflow/data.json` ; couvert par des tests unitaires (`mvn test`).
-- **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle ou import d'un dossier entier) ou en retirer plusieurs à la fois, supprimer un cours. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
+- **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle, import d'un dossier entier — suivi et actualisable — ou lien web) ou en retirer plusieurs à la fois, supprimer un cours (icône corbeille). Recherche/filtre par nom, dossier virtuel ou tag ; étiquettes libres et dossier virtuel par fichier ; lier un fichier d'un autre cours sans le dupliquer. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
 - **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille des 7 jours (7h-20h), créer/modifier/supprimer un créneau via une boîte de dialogue (y compris salle et description, tous deux optionnels), rendu coloré par cours affichant nom + salle + horaires + description directement sur le bloc. Un créneau placé peut être glissé à la souris (déplacement libre entre jours et horaires, par pas de 10 min) et redimensionné en tirant son bord haut/bas. La largeur des colonnes s'adapte à la largeur de la fenêtre. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
 - **Sélection de fichiers par créneau (UI)** ✅ — dans la boîte de dialogue d'un créneau : liste à cocher des fichiers du Cours associé (tout coché par défaut à la création), boutons "Tout cocher"/"Tout décocher", et bouton "Ouvrir maintenant" qui ouvre les fichiers cochés sans passer par le terminal. Testé manuellement dans l'application.
 - **Commande `lecture` (CLI)** ✅ — [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](src/main/java/com/teacherflow/cli/ArgumentsLecture.java) + [NavigationCreneaux](src/main/java/com/teacherflow/cli/NavigationCreneaux.java) + [GrilleAscii](src/main/java/com/teacherflow/cli/GrilleAscii.java) (testés unitairement) : sous-commandes `slot`/`slots`/`schedule`/`courses`/`course`/`open-file`, ciblage par `--day`/`--date`+`--time` ou `--next`/`--previous` (avertissement si le créneau résolu tombe un autre jour que la référence), et lancement de l'appli graphique (`lecture .`) — ouvre les fichiers via la logique partagée [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java). Appel `java` direct (classpath mis en cache) plutôt que `mvn` à chaque exécution. Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
@@ -176,20 +176,21 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - [x] `lecture .` lance l'application graphique (comme `code .`), détachée du terminal
 - [x] Script d'installation ([bin/lecture](bin/lecture)) appelant le point d'entrée CLI via `mvn javafx:run -Djavafx.mainClass=...`
 
-### Phase 6 — Confort & robustesse
-- Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur
-- Annuler/rétablir (Ctrl+Z) sur l'emploi du temps, pour rattraper un créneau déplacé ou supprimé par erreur
-- Édition rapide (glisser-déposer de fichiers, réorganisation, duplication de créneau/semaine)
-- Recherche/filtre dans la liste des cours et fichiers
-- Étiquettes/tags sur les fichiers (ex. "à corriger", "brouillon") pour trier indépendamment du cours
-- Aperçu rapide d'un fichier (PDF/image) directement dans l'appli, sans ouvrir le logiciel externe
-- Sauvegarde/export de la configuration (pour changer de machine ou sauvegarder)
-- Dossiers virtuels dans un Cours pour regrouper des fichiers par partie/chapitre (pas de dossiers réels sur le disque — juste un regroupement dans l'appli)
-- Lier un fichier d'un Cours à un autre Cours, sans dupliquer le fichier
-- Ajout de liens web (URL) comme "fichiers" ouvrables au même titre que les fichiers locaux
-- Suppression d'un Cours via la même icône corbeille que la suppression de fichier (cohérence visuelle)
-- Refonte graphique professionnelle, sobre mais réactive : thème(s), animations/transitions, micro-interactions — remplace le rendu par défaut JavaFX utilisé jusqu'ici (le style avait été volontairement mis de côté jusqu'à cette phase)
-- Section "Accueil" dans la barre latérale : équivalent graphique de la commande `lecture`, propose directement les fichiers du créneau de l'heure avec boutons précédent/suivant (pour enchaîner sans effet de battement entre deux créneaux)
+### Phase 6 — Confort & robustesse (en cours)
+- [ ] Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur
+- [ ] Annuler/rétablir (Ctrl+Z) sur l'emploi du temps, pour rattraper un créneau déplacé ou supprimé par erreur
+- [ ] Édition rapide (glisser-déposer de fichiers, réorganisation, duplication de créneau/semaine)
+- [x] Recherche/filtre dans la liste des cours et fichiers — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : champ de recherche par nom (cours et fichiers), filtre par dossier virtuel, la recherche fichiers matche aussi les tags
+- [x] Étiquettes/tags sur les fichiers (ex. "à corriger", "brouillon") pour trier indépendamment du cours
+- [ ] Aperçu rapide d'un fichier (PDF/image) directement dans l'appli, sans ouvrir le logiciel externe
+- [x] Sauvegarde/export de la configuration (pour changer de machine ou sauvegarder) — section "Sauvegarde" dans [ParametresPane](src/main/java/com/teacherflow/ui/ParametresPane.java)
+- [x] Dossiers virtuels dans un Cours pour regrouper des fichiers par partie/chapitre (pas de dossiers réels sur le disque — juste un regroupement dans l'appli), filtrable via un menu déroulant
+- [x] Dossier réel du disque lié à un Cours (suivi, pas juste un import ponctuel) : bouton "Actualiser les dossiers liés" qui importe les nouveaux fichiers sans dupliquer l'existant
+- [x] Lier un fichier d'un Cours à un autre Cours, sans dupliquer le fichier ; se délie sans supprimer le fichier d'origine
+- [x] Ajout de liens web (URL) comme "fichiers" ouvrables au même titre que les fichiers locaux
+- [x] Suppression d'un Cours via la même icône corbeille que la suppression de fichier (cohérence visuelle)
+- [ ] Refonte graphique professionnelle, sobre mais réactive : thème(s), animations/transitions, micro-interactions — remplace le rendu par défaut JavaFX utilisé jusqu'ici (le style avait été volontairement mis de côté jusqu'à cette phase)
+- [ ] Section "Accueil" dans la barre latérale : équivalent graphique de la commande `lecture`, propose directement les fichiers du créneau de l'heure avec boutons précédent/suivant (pour enchaîner sans effet de battement entre deux créneaux)
 
 ### Phase 7 — Fonctionnalités avancées (optionnel, post-MVP)
 - Gestion de semaines alternées (semaine A / semaine B)
