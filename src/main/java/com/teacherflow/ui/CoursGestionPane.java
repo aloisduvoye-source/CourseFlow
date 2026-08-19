@@ -213,6 +213,20 @@ public class CoursGestionPane extends BorderPane {
     }
 
     /**
+     * Reconstruit uniquement le contenu des lignes de dossier référencé déjà dépliées (sans
+     * changer l'ordre ni l'état déplié/replié), pour refléter un fichier supprimé/ajouté par
+     * ailleurs (ex. via la corbeille de la liste principale) sans attendre un nouveau dépliage.
+     */
+    private void rafraichirContenuDossiersReferencesOuverts(Cours cours) {
+        List<DossierReference> references = cours.getDossiersReferences();
+        for (int i = 0; i < conteneurDossiersReferences.getChildren().size() && i < references.size(); i++) {
+            if (conteneurDossiersReferences.getChildren().get(i) instanceof TitledPane panneau && panneau.isExpanded()) {
+                panneau.setContent(construireContenuDossierReference(cours, references.get(i)));
+            }
+        }
+    }
+
+    /**
      * Une ligne dépliable par dossier référencé : icône dossier + chemin en en-tête, et une
      * fois dépliée, une case à cocher par fichier trouvé dans le dossier (coché = importé
      * dans le cours). Le scan du disque n'a lieu qu'au dépliage, pour rester réactif.
@@ -249,29 +263,25 @@ public class CoursGestionPane extends BorderPane {
             }
         }
 
-        Button boutonDelier = new Button("Délier ce dossier");
+        Button boutonDelier = new Button("Délier ce dossier (retire aussi ses fichiers importés)");
         boutonDelier.setOnAction(e -> delierDossierReference(reference));
         contenu.getChildren().add(boutonDelier);
 
         return contenu;
     }
 
-    /**
-     * Coche = importe le fichier dans le cours (sans dupliquer s'il y est déjà, ex. après un
-     * précédent décochage). Décoche = arrête seulement de le suivre via cette référence ; le
-     * fichier reste dans le cours (le supprimer reste possible via sa propre icône corbeille
-     * dans "Fichiers du cours") — cocher/décocher ici ne doit jamais supprimer un fichier.
-     */
     private void toggleFichierDossierReference(Cours cours, DossierReference reference, File fichier, boolean coche) {
-        String chemin = fichier.getAbsolutePath();
         if (coche) {
-            boolean dejaPresent = cours.getFichiers().stream().anyMatch(f -> chemin.equals(f.getChemin()));
-            if (!dejaPresent) {
-                cours.ajouterFichier(chemin, fichier.getName());
+            if (!reference.getFichiersImportes().contains(fichier.getAbsolutePath())) {
+                cours.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
+                reference.getFichiersImportes().add(fichier.getAbsolutePath());
             }
-            reference.getFichiersImportes().add(chemin);
         } else {
-            reference.getFichiersImportes().remove(chemin);
+            cours.getFichiers().stream()
+                    .filter(f -> f.getChemin().equals(fichier.getAbsolutePath()))
+                    .findFirst()
+                    .ifPresent(f -> cours.retirerFichier(f.getId()));
+            reference.getFichiersImportes().remove(fichier.getAbsolutePath());
         }
         tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(cours));
         notifierChangement();
@@ -419,12 +429,23 @@ public class CoursGestionPane extends BorderPane {
         notifierChangement();
     }
 
+    /**
+     * Délie le dossier référencé : retire aussi du cours tous les fichiers qui avaient été
+     * importés depuis lui (pas seulement la référence elle-même).
+     */
     private void delierDossierReference(DossierReference reference) {
         Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
         if (selectionne == null) {
             return;
         }
+        for (String chemin : reference.getFichiersImportes()) {
+            selectionne.getFichiers().stream()
+                    .filter(f -> f.getChemin().equals(chemin))
+                    .findFirst()
+                    .ifPresent(f -> selectionne.retirerFichier(f.getId()));
+        }
         selectionne.getDossiersReferences().remove(reference);
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
         rafraichirDossiersReferences(selectionne);
         notifierChangement();
     }
@@ -482,7 +503,11 @@ public class CoursGestionPane extends BorderPane {
             return;
         }
         selectionne.retirerFichier(fichier.getId());
+        for (DossierReference reference : selectionne.getDossiersReferences()) {
+            reference.getFichiersImportes().remove(fichier.getChemin());
+        }
         tousLesFichiers.remove(fichier);
+        rafraichirContenuDossiersReferencesOuverts(selectionne);
         notifierChangement();
     }
 
