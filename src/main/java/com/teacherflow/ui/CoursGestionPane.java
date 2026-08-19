@@ -3,6 +3,9 @@ package com.teacherflow.ui;
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
@@ -42,6 +45,12 @@ public class CoursGestionPane extends BorderPane {
 
     private final ListView<Cours> listeCours = new ListView<>();
     private final ListView<Fichier> listeFichiers = new ListView<>();
+    private final ObservableList<Cours> tousLesCours = FXCollections.observableArrayList();
+    private final FilteredList<Cours> coursFiltres = new FilteredList<>(tousLesCours);
+    private final ObservableList<Fichier> tousLesFichiers = FXCollections.observableArrayList();
+    private final FilteredList<Fichier> fichiersFiltres = new FilteredList<>(tousLesFichiers);
+    private final TextField rechercheCours = new TextField();
+    private final TextField rechercheFichiers = new TextField();
     private final TextField champNom = new TextField();
     private final ColorPicker selecteurCouleur = new ColorPicker();
     private final Label messageVide = new Label("Sélectionnez un cours ou créez-en un nouveau.");
@@ -55,7 +64,7 @@ public class CoursGestionPane extends BorderPane {
         setLeft(construireColonneListe());
         setCenter(construireDetails());
 
-        listeCours.getItems().addAll(emploiDuTemps.getCours());
+        tousLesCours.addAll(emploiDuTemps.getCours());
         listeCours.getSelectionModel().selectedItemProperty()
                 .addListener((obs, ancien, nouveau) -> afficherDetails(nouveau));
         afficherDetails(null);
@@ -63,16 +72,26 @@ public class CoursGestionPane extends BorderPane {
 
     private VBox construireColonneListe() {
         listeCours.setCellFactory(vue -> new CoursCell());
+        listeCours.setItems(coursFiltres);
         VBox.setVgrow(listeCours, Priority.ALWAYS);
+
+        rechercheCours.setPromptText("Rechercher un cours...");
+        rechercheCours.textProperty().addListener((obs, ancien, texte) -> coursFiltres.setPredicate(this::coursCorrespond));
 
         Button boutonNouveau = new Button("Nouveau cours");
         boutonNouveau.setMaxWidth(Double.MAX_VALUE);
         boutonNouveau.setOnAction(e -> creerCours());
 
-        VBox colonne = new VBox(8, listeCours, boutonNouveau);
+        VBox colonne = new VBox(8, rechercheCours, listeCours, boutonNouveau);
         colonne.setPadding(new Insets(0, 12, 0, 0));
         colonne.setPrefWidth(220);
         return colonne;
+    }
+
+    private boolean coursCorrespond(Cours cours) {
+        String texte = rechercheCours.getText();
+        return texte == null || texte.isBlank()
+                || (cours.getNom() != null && cours.getNom().toLowerCase().contains(texte.toLowerCase()));
     }
 
     private VBox construireDetails() {
@@ -92,7 +111,11 @@ public class CoursGestionPane extends BorderPane {
         HBox.setHgrow(champNom, Priority.ALWAYS);
 
         listeFichiers.setCellFactory(vue -> new FichierCell());
+        listeFichiers.setItems(fichiersFiltres);
         VBox.setVgrow(listeFichiers, Priority.ALWAYS);
+
+        rechercheFichiers.setPromptText("Rechercher un fichier...");
+        rechercheFichiers.textProperty().addListener((obs, ancien, texte) -> fichiersFiltres.setPredicate(this::fichierCorrespond));
 
         Button boutonAjouterFichier = new Button("Ajouter des fichiers...");
         boutonAjouterFichier.setOnAction(e -> ajouterFichiers());
@@ -110,9 +133,20 @@ public class CoursGestionPane extends BorderPane {
 
         panneauDetails.getChildren().addAll(
                 titreNomCouleur, ligneNomCouleur,
-                titreFichiers, listeFichiers, boutonsFichiers);
+                titreFichiers, rechercheFichiers, listeFichiers, boutonsFichiers);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
         return panneauDetails;
+    }
+
+    private boolean fichierCorrespond(Fichier fichier) {
+        String texte = rechercheFichiers.getText();
+        if (texte == null || texte.isBlank()) {
+            return true;
+        }
+        String recherche = texte.toLowerCase();
+        String libelle = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
+                ? fichier.getNomAffichage() : fichier.getChemin();
+        return libelle != null && libelle.toLowerCase().contains(recherche);
     }
 
     private void afficherDetails(Cours cours) {
@@ -126,12 +160,14 @@ public class CoursGestionPane extends BorderPane {
         champNom.setText(cours.getNom());
         selecteurCouleur.setValue(Color.web(
                 cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT));
-        listeFichiers.getItems().setAll(cours.getFichiers());
+        rechercheFichiers.clear();
+        tousLesFichiers.setAll(cours.getFichiers());
     }
 
     private void creerCours() {
+        rechercheCours.clear();
         Cours nouveauCours = emploiDuTemps.ajouterCours("Nouveau cours", couleurAleatoire());
-        listeCours.getItems().add(nouveauCours);
+        tousLesCours.add(nouveauCours);
         listeCours.getSelectionModel().select(nouveauCours);
         champNom.requestFocus();
         champNom.selectAll();
@@ -146,7 +182,7 @@ public class CoursGestionPane extends BorderPane {
         Optional<ButtonType> reponse = confirmation.showAndWait();
         if (reponse.isPresent() && reponse.get() == ButtonType.OK) {
             emploiDuTemps.supprimerCours(cours.getId());
-            listeCours.getItems().remove(cours);
+            tousLesCours.remove(cours);
             notifierChangement();
         }
     }
@@ -189,7 +225,7 @@ public class CoursGestionPane extends BorderPane {
         for (File fichier : fichiers) {
             selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
         }
-        listeFichiers.getItems().setAll(selectionne.getFichiers());
+        tousLesFichiers.setAll(selectionne.getFichiers());
         notifierChangement();
     }
 
@@ -216,7 +252,7 @@ public class CoursGestionPane extends BorderPane {
         for (File fichier : fichiersDuDossier) {
             selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
         }
-        listeFichiers.getItems().setAll(selectionne.getFichiers());
+        tousLesFichiers.setAll(selectionne.getFichiers());
         notifierChangement();
     }
 
@@ -243,7 +279,7 @@ public class CoursGestionPane extends BorderPane {
             return;
         }
         selectionne.ajouterFichier(url, url);
-        listeFichiers.getItems().setAll(selectionne.getFichiers());
+        tousLesFichiers.setAll(selectionne.getFichiers());
         notifierChangement();
     }
 
@@ -253,7 +289,7 @@ public class CoursGestionPane extends BorderPane {
             return;
         }
         selectionne.retirerFichier(fichier.getId());
-        listeFichiers.getItems().remove(fichier);
+        tousLesFichiers.remove(fichier);
         notifierChangement();
     }
 
