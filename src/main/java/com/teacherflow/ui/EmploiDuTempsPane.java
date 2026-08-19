@@ -210,6 +210,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
         emploiDuTemps.getCreneaux().stream()
                 .filter(c -> indexDuJour(c.getJour()) >= 0)
+                .filter(c -> chevaucheGrille(c.getHeureDebut(), c.getHeureFin()))
                 .forEach(c -> pane.getChildren().add(new BlocCreneau(c)));
 
         return pane;
@@ -248,6 +249,15 @@ public class EmploiDuTempsPane extends BorderPane {
 
     private int minutesGrille() {
         return (int) Duration.between(heureDebutGrille, heureFinGrille).toMinutes();
+    }
+
+    /**
+     * @return true si [debut, fin) recouvre au moins partiellement la plage horaire actuelle
+     * de la grille (utilisé pour ne pas afficher un créneau devenu totalement invisible après
+     * un rétrécissement de cette plage dans les paramètres).
+     */
+    private boolean chevaucheGrille(LocalTime debut, LocalTime fin) {
+        return fin.isAfter(heureDebutGrille) && debut.isBefore(heureFinGrille);
     }
 
     private int indexDuJour(DayOfWeek jour) {
@@ -308,9 +318,13 @@ public class EmploiDuTempsPane extends BorderPane {
 
         private void actualiser(int dayIndex, int debutMinutes, int finMinutes) {
             dayIndexCourant = dayIndex;
+            int grilleDebut = toMinutes(heureDebutGrille);
+            int grilleFin = toMinutes(heureFinGrille);
+            int debutAffiche = clamp(debutMinutes, grilleDebut, grilleFin);
+            int finAffiche = clamp(finMinutes, grilleDebut, grilleFin);
             setLayoutX(dayIndex * largeurColonneJour + 2);
-            setLayoutY(MARGE_VERTICALE + (debutMinutes - toMinutes(heureDebutGrille)) * PIXELS_PAR_MINUTE);
-            setPrefHeight(Math.max(DUREE_MIN_MINUTES, finMinutes - debutMinutes) * PIXELS_PAR_MINUTE);
+            setLayoutY(MARGE_VERTICALE + (debutAffiche - grilleDebut) * PIXELS_PAR_MINUTE);
+            setPrefHeight(Math.max(DUREE_MIN_MINUTES, finAffiche - debutAffiche) * PIXELS_PAR_MINUTE);
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String nomCours = cours != null ? cours.getNom() : "(cours supprimé)";
 

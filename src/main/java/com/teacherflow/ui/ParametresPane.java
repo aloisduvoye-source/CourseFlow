@@ -210,8 +210,19 @@ public class ParametresPane extends BorderPane {
             grilleBlocs.getChildren().add(ligne);
         }
         for (PlageHoraire bloc : new ArrayList<>(parametres.getBlocs())) {
-            grilleBlocs.getChildren().add(new BlocEditeur(bloc));
+            if (chevaucheGrille(bloc.getDebut(), bloc.getFin())) {
+                grilleBlocs.getChildren().add(new BlocEditeur(bloc));
+            }
         }
+    }
+
+    /**
+     * @return true si [debut, fin) recouvre au moins partiellement la plage horaire actuelle
+     * de la grille (utilisé pour ne pas afficher un bloc devenu totalement invisible après un
+     * rétrécissement de cette plage).
+     */
+    private boolean chevaucheGrille(LocalTime debut, LocalTime fin) {
+        return fin.isAfter(parametres.getHeureDebutGrille()) && debut.isBefore(parametres.getHeureFinGrille());
     }
 
     private void surClicGrilleVide(MouseEvent e) {
@@ -241,9 +252,9 @@ public class ParametresPane extends BorderPane {
     private void ouvrirDialogueBloc(PlageHoraire bloc) {
         List<LocalTime> limites = genererLimites();
         ComboBox<LocalTime> choixDebut = new ComboBox<>();
-        choixDebut.getItems().addAll(limites.subList(0, limites.size() - 1));
+        choixDebut.getItems().addAll(avecValeur(limites.subList(0, limites.size() - 1), bloc.getDebut()));
         ComboBox<LocalTime> choixFin = new ComboBox<>();
-        choixFin.getItems().addAll(limites.subList(1, limites.size()));
+        choixFin.getItems().addAll(avecValeur(limites.subList(1, limites.size()), bloc.getFin()));
         choixDebut.setValue(bloc.getDebut());
         choixFin.setValue(bloc.getFin());
 
@@ -298,6 +309,21 @@ public class ParametresPane extends BorderPane {
             t = t.plusMinutes(pas);
         }
         return limites;
+    }
+
+    /**
+     * @return {@code options} augmentée de {@code valeur} si elle n'y figure pas déjà (triée),
+     * pour garantir qu'un horaire de bloc existant reste sélectionnable même s'il tombe hors
+     * de la plage horaire actuelle de la grille.
+     */
+    private static List<LocalTime> avecValeur(List<LocalTime> options, LocalTime valeur) {
+        if (valeur == null || options.contains(valeur)) {
+            return options;
+        }
+        List<LocalTime> resultat = new ArrayList<>(options);
+        resultat.add(valeur);
+        resultat.sort(LocalTime::compareTo);
+        return resultat;
     }
 
     private int minutesGrille() {
@@ -366,9 +392,13 @@ public class ParametresPane extends BorderPane {
         }
 
         private void actualiser(int debutMinutes, int finMinutes) {
+            int grilleDebut = toMinutes(parametres.getHeureDebutGrille());
+            int grilleFin = toMinutes(parametres.getHeureFinGrille());
+            int debutAffiche = clamp(debutMinutes, grilleDebut, grilleFin);
+            int finAffiche = clamp(finMinutes, grilleDebut, grilleFin);
             setLayoutX(2);
-            setLayoutY(MARGE_VERTICALE + (debutMinutes - toMinutes(parametres.getHeureDebutGrille())) * PIXELS_PAR_MINUTE);
-            setPrefHeight(Math.max(DUREE_MIN_MINUTES, finMinutes - debutMinutes) * PIXELS_PAR_MINUTE);
+            setLayoutY(MARGE_VERTICALE + (debutAffiche - grilleDebut) * PIXELS_PAR_MINUTE);
+            setPrefHeight(Math.max(DUREE_MIN_MINUTES, finAffiche - debutAffiche) * PIXELS_PAR_MINUTE);
             libelle.setText(minutesVersHeure(debutMinutes) + " - " + minutesVersHeure(finMinutes));
         }
 
