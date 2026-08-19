@@ -458,7 +458,7 @@ public class EmploiDuTempsPane extends BorderPane {
             champDescription.setText(creneauExistant.getDescription());
         } else {
             coursInitial = emploiDuTemps.getCours().get(0);
-            coursInitial.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
+            emploiDuTemps.fichiersVisibles(coursInitial).forEach(f -> fichiersCoches.add(f.getId()));
             choixDebut.setValue(heureDebutParDefaut);
             choixFin.setValue(heureFinParDefaut);
         }
@@ -477,15 +477,15 @@ public class EmploiDuTempsPane extends BorderPane {
             });
             return propriete;
         }));
-        listeFichiers.getItems().setAll(coursInitial.getFichiers());
+        listeFichiers.getItems().setAll(emploiDuTemps.fichiersVisibles(coursInitial));
 
         choixCours.setOnAction(e -> {
             Cours coursChoisi = choixCours.getValue();
             fichiersCoches.clear();
             if (coursChoisi != null) {
-                coursChoisi.getFichiers().forEach(f -> fichiersCoches.add(f.getId()));
+                emploiDuTemps.fichiersVisibles(coursChoisi).forEach(f -> fichiersCoches.add(f.getId()));
             }
-            listeFichiers.getItems().setAll(coursChoisi != null ? coursChoisi.getFichiers() : List.of());
+            listeFichiers.getItems().setAll(coursChoisi != null ? emploiDuTemps.fichiersVisibles(coursChoisi) : List.of());
         });
 
         Button boutonToutCocher = new Button("Tout cocher");
@@ -550,7 +550,7 @@ public class EmploiDuTempsPane extends BorderPane {
             return;
         }
 
-        List<UUID> idsSelectionnes = coursChoisi.getFichiers().stream()
+        List<UUID> idsSelectionnes = emploiDuTemps.fichiersVisibles(coursChoisi).stream()
                 .map(Fichier::getId)
                 .filter(fichiersCoches::contains)
                 .collect(Collectors.toList());

@@ -60,8 +60,8 @@ public class EmploiDuTemps {
     }
 
     /**
-     * Résout la liste des {@link Fichier} sélectionnés pour un créneau donné,
-     * parmi la bibliothèque du {@link Cours} associé.
+     * Résout la liste des {@link Fichier} sélectionnés pour un créneau donné, parmi les
+     * fichiers visibles du {@link Cours} associé (possédés ou liés depuis le cours par défaut).
      */
     public List<Fichier> fichiersPourCreneau(Creneau creneau) {
         Optional<Cours> coursAssocie = trouverCours(creneau.getCoursId());
@@ -69,7 +69,7 @@ public class EmploiDuTemps {
             return List.of();
         }
         List<UUID> idsSelectionnes = creneau.getFichiersSelectionnesIds();
-        return coursAssocie.get().getFichiers().stream()
+        return fichiersVisibles(coursAssocie.get()).stream()
                 .filter(f -> idsSelectionnes.contains(f.getId()))
                 .collect(Collectors.toList());
     }

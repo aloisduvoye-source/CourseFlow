@@ -93,6 +93,25 @@ class EmploiDuTempsTest {
     }
 
     @Test
+    void unCreneauPeutResoudreUnFichierLieDepuisLeCoursParDefaut() {
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
+        Fichier exercices = maths.ajouterFichier("/docs/maths/exercices.pdf", "Exercices");
+
+        Cours soutien = emploiDuTemps.ajouterCours("Soutien scolaire", "#e67e22");
+        soutien.ajouterFichierLie(exercices.getId());
+
+        Creneau creneau = emploiDuTemps.ajouterCreneau(
+                DayOfWeek.WEDNESDAY, LocalTime.of(14, 0), LocalTime.of(15, 0), soutien.getId());
+        creneau.selectionnerFichier(exercices.getId());
+
+        List<Fichier> fichiersDuCreneau = emploiDuTemps.fichiersPourCreneau(creneau);
+
+        assertEquals(1, fichiersDuCreneau.size());
+        assertTrue(fichiersDuCreneau.contains(exercices));
+    }
+
+    @Test
     void trouverCoursDefautResoutLIdEnregistreDansLesParametres() {
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
         Cours maths = emploiDuTemps.ajouterCours("6e A - Mathématiques", "#3498db");
