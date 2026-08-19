@@ -325,11 +325,12 @@ public class CoursGestionPane extends BorderPane {
                 }
             });
 
-            Region espaceur = new Region();
-            HBox.setHgrow(espaceur, Priority.ALWAYS);
+            ligne.prefWidthProperty().bind(listeCours.widthProperty().subtract(24));
+            libelle.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(libelle, Priority.ALWAYS);
 
             ligne.setAlignment(Pos.CENTER_LEFT);
-            ligne.getChildren().addAll(pastille, libelle, espaceur, boutonSupprimer);
+            ligne.getChildren().addAll(pastille, libelle, boutonSupprimer);
         }
 
         @Override
