@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Ouvre les fichiers du créneau courant (ou ciblé via --jour/--heure/-p/-n/-l), sans lancer
-# l'interface graphique — sauf avec "lecture ." qui lance l'application (comme "code .").
+# Ouvre ou consulte les fichiers/créneaux/cours (voir "lecture --help" pour les sous-commandes
+# et options), sans lancer l'interface graphique — sauf avec "lecture ." qui lance
+# l'application (comme "code .").
 # À installer via :
 #   ln -s "$(pwd)/bin/lecture" ~/.local/bin/lecture
 #

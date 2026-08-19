@@ -3,31 +3,45 @@ package com.teacherflow.cli;
 import com.teacherflow.util.NomsJours;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 
 /**
- * Analyse des arguments de la commande {@code lecture} : {@code --jour <nom>} et/ou
- * {@code --heure HH:mm} pour cibler un autre créneau, {@code -p}/{@code -n} pour naviguer
- * vers le créneau précédent/suivant, {@code -l} pour lister les fichiers du créneau résolu
- * au lieu de les ouvrir, {@code -s} pour afficher l'emploi du temps de la semaine en grille
- * ASCII. Donner {@code --jour} sans {@code --heure} bascule en mode "liste des créneaux du
- * jour" plutôt que de chercher un créneau précis.
+ * Analyse des arguments de la commande {@code lecture} : une sous-commande optionnelle
+ * ({@code slot}, {@code slots}, {@code schedule}, {@code courses}, {@code course},
+ * {@code open-file} ; son absence signifie "ouvrir les fichiers du créneau ciblé"), suivie
+ * d'options communes {@code --next}/{@code --previous}, {@code --date}/{@code --day} (jour
+ * ciblé, exclusifs entre eux), {@code --time}, et des options propres à certaines
+ * sous-commandes ({@code --course}, {@code --file}, {@code --missing-info}).
  */
 public final class ArgumentsLecture {
 
-    public enum Mode { CRENEAU_COURANT, LISTE_JOUR, PRECEDENT, SUIVANT, SEMAINE }
+    public enum Commande { OUVRIR, SLOT, SLOTS, SCHEDULE, COURSES, COURSE, OPEN_FILE }
 
+    private final Commande commande;
     private final DayOfWeek jour;
     private final LocalTime heure;
-    private final Mode mode;
-    private final boolean listerFichiers;
+    private final boolean suivant;
+    private final boolean precedent;
+    private final boolean missingInfo;
+    private final String nomCours;
+    private final String nomFichier;
 
-    private ArgumentsLecture(DayOfWeek jour, LocalTime heure, Mode mode, boolean listerFichiers) {
+    private ArgumentsLecture(Commande commande, DayOfWeek jour, LocalTime heure, boolean suivant,
+            boolean precedent, boolean missingInfo, String nomCours, String nomFichier) {
+        this.commande = commande;
         this.jour = jour;
         this.heure = heure;
-        this.mode = mode;
-        this.listerFichiers = listerFichiers;
+        this.suivant = suivant;
+        this.precedent = precedent;
+        this.missingInfo = missingInfo;
+        this.nomCours = nomCours;
+        this.nomFichier = nomFichier;
+    }
+
+    public Commande getCommande() {
+        return commande;
     }
 
     public DayOfWeek getJour() {
@@ -38,38 +52,95 @@ public final class ArgumentsLecture {
         return heure;
     }
 
-    public Mode getMode() {
-        return mode;
+    public boolean isSuivant() {
+        return suivant;
     }
 
-    public boolean isListerFichiers() {
-        return listerFichiers;
+    public boolean isPrecedent() {
+        return precedent;
+    }
+
+    public boolean isMissingInfo() {
+        return missingInfo;
+    }
+
+    public String getNomCours() {
+        return nomCours;
+    }
+
+    public String getNomFichier() {
+        return nomFichier;
     }
 
     public static ArgumentsLecture analyser(String[] args, DayOfWeek jourParDefaut, LocalTime heureParDefaut) {
+        int index = 0;
+        Commande commande = Commande.OUVRIR;
+        String nomCours = null;
+
+        if (args.length > 0 && !args[0].startsWith("-")) {
+            commande = switch (args[0]) {
+                case "slot" -> Commande.SLOT;
+                case "slots" -> Commande.SLOTS;
+                case "schedule" -> Commande.SCHEDULE;
+                case "courses" -> Commande.COURSES;
+                case "course" -> Commande.COURSE;
+                case "open-file" -> Commande.OPEN_FILE;
+                default -> throw new IllegalArgumentException("Commande inconnue : \"" + args[0] + "\".");
+            };
+            index = 1;
+            if (commande == Commande.COURSE) {
+                if (index >= args.length || args[index].startsWith("-")) {
+                    throw new IllegalArgumentException(
+                            "La commande \"course\" attend le nom du cours en argument.");
+                }
+                nomCours = args[index];
+                index++;
+            }
+        }
+
         DayOfWeek jour = jourParDefaut;
         LocalTime heure = heureParDefaut;
         boolean jourSpecifie = false;
+        boolean dateSpecifiee = false;
         boolean heureSpecifiee = false;
-        boolean precedent = false;
         boolean suivant = false;
-        boolean listerFichiers = false;
-        boolean semaine = false;
+        boolean precedent = false;
+        boolean missingInfo = false;
+        String nomCoursOption = null;
+        String nomFichier = null;
 
-        int i = 0;
-        while (i < args.length) {
-            String option = args[i];
+        while (index < args.length) {
+            String option = args[index];
             switch (option) {
-                case "--jour" -> {
-                    String valeur = valeurSuivante(args, i, option);
-                    jour = NomsJours.depuisNom(valeur).orElseThrow(() -> new IllegalArgumentException(
-                            "Jour inconnu : \"" + valeur + "\" (attendu : Lundi, Mardi, Mercredi, Jeudi, "
-                                    + "Vendredi, Samedi ou Dimanche)."));
-                    jourSpecifie = true;
-                    i += 2;
+                case "--next" -> {
+                    suivant = true;
+                    index += 1;
                 }
-                case "--heure" -> {
-                    String valeur = valeurSuivante(args, i, option);
+                case "--previous" -> {
+                    precedent = true;
+                    index += 1;
+                }
+                case "--day" -> {
+                    String valeur = valeurSuivante(args, index, option);
+                    jour = NomsJours.depuisNom(valeur).orElseThrow(() -> new IllegalArgumentException(
+                            "Jour inconnu : \"" + valeur + "\" (attendu : lundi, mardi, mercredi, jeudi, "
+                                    + "vendredi, samedi ou dimanche)."));
+                    jourSpecifie = true;
+                    index += 2;
+                }
+                case "--date" -> {
+                    String valeur = valeurSuivante(args, index, option);
+                    try {
+                        jour = LocalDate.parse(valeur).getDayOfWeek();
+                    } catch (DateTimeParseException e) {
+                        throw new IllegalArgumentException(
+                                "Date invalide : \"" + valeur + "\" (format attendu : AAAA-MM-JJ).");
+                    }
+                    dateSpecifiee = true;
+                    index += 2;
+                }
+                case "--time" -> {
+                    String valeur = valeurSuivante(args, index, option);
                     try {
                         heure = LocalTime.parse(valeur);
                     } catch (DateTimeParseException e) {
@@ -77,49 +148,106 @@ public final class ArgumentsLecture {
                                 "Heure invalide : \"" + valeur + "\" (format attendu : HH:mm).");
                     }
                     heureSpecifiee = true;
-                    i += 2;
+                    index += 2;
                 }
-                case "-p" -> {
-                    precedent = true;
-                    i += 1;
+                case "--course" -> {
+                    nomCoursOption = valeurSuivante(args, index, option);
+                    index += 2;
                 }
-                case "-n" -> {
-                    suivant = true;
-                    i += 1;
+                case "--file" -> {
+                    nomFichier = valeurSuivante(args, index, option);
+                    index += 2;
                 }
-                case "-l" -> {
-                    listerFichiers = true;
-                    i += 1;
-                }
-                case "-s" -> {
-                    semaine = true;
-                    i += 1;
+                case "--missing-info" -> {
+                    missingInfo = true;
+                    index += 1;
                 }
                 default -> throw new IllegalArgumentException("Option inconnue : \"" + option + "\".");
             }
         }
 
-        if (precedent && suivant) {
-            throw new IllegalArgumentException("Les options -p et -n sont incompatibles.");
+        if (jourSpecifie && dateSpecifiee) {
+            throw new IllegalArgumentException("Les options --day et --date sont incompatibles.");
         }
-        if (semaine && (precedent || suivant)) {
-            throw new IllegalArgumentException("L'option -s est incompatible avec -p/-n.");
+        if (suivant && precedent) {
+            throw new IllegalArgumentException("Les options --next et --previous sont incompatibles.");
+        }
+        boolean jourDonne = jourSpecifie || dateSpecifiee;
+
+        switch (commande) {
+            case OUVRIR, SLOT -> {
+                interdireSiPresent(missingInfo, "--missing-info");
+                interdireSiPresent(nomCoursOption != null, "--course");
+                interdireSiPresent(nomFichier != null, "--file");
+                if (jourDonne && !heureSpecifiee && !suivant && !precedent) {
+                    throw new IllegalArgumentException(
+                            "--day/--date nécessite --time (ou utilisez \"lecture slots\" pour lister "
+                                    + "les créneaux d'un jour).");
+                }
+            }
+            case SLOTS -> {
+                interdireSiPresent(heureSpecifiee, "--time");
+                interdireSiPresent(suivant, "--next");
+                interdireSiPresent(precedent, "--previous");
+                interdireSiPresent(missingInfo, "--missing-info");
+                interdireSiPresent(nomCoursOption != null, "--course");
+                interdireSiPresent(nomFichier != null, "--file");
+            }
+            case SCHEDULE -> {
+                interdireSiPresent(jourDonne, "--day/--date");
+                interdireSiPresent(heureSpecifiee, "--time");
+                interdireSiPresent(suivant, "--next");
+                interdireSiPresent(precedent, "--previous");
+                interdireSiPresent(missingInfo, "--missing-info");
+                interdireSiPresent(nomCoursOption != null, "--course");
+                interdireSiPresent(nomFichier != null, "--file");
+            }
+            case COURSES -> {
+                interdireSiPresent(jourDonne, "--day/--date");
+                interdireSiPresent(heureSpecifiee, "--time");
+                interdireSiPresent(suivant, "--next");
+                interdireSiPresent(precedent, "--previous");
+                interdireSiPresent(nomCoursOption != null, "--course");
+                interdireSiPresent(nomFichier != null, "--file");
+            }
+            case COURSE -> {
+                interdireSiPresent(jourDonne, "--day/--date");
+                interdireSiPresent(heureSpecifiee, "--time");
+                interdireSiPresent(suivant, "--next");
+                interdireSiPresent(precedent, "--previous");
+                interdireSiPresent(missingInfo, "--missing-info");
+                interdireSiPresent(nomCoursOption != null, "--course");
+                interdireSiPresent(nomFichier != null, "--file");
+            }
+            case OPEN_FILE -> {
+                interdireSiPresent(suivant, "--next");
+                interdireSiPresent(precedent, "--previous");
+                interdireSiPresent(missingInfo, "--missing-info");
+                if (nomFichier == null) {
+                    throw new IllegalArgumentException("La commande \"open-file\" nécessite --file.");
+                }
+                if (nomCoursOption != null && jourDonne) {
+                    throw new IllegalArgumentException("--course et --day/--date sont incompatibles.");
+                }
+                if (nomCoursOption == null && !jourDonne) {
+                    throw new IllegalArgumentException(
+                            "La commande \"open-file\" nécessite --course, ou --day/--date accompagné de --time.");
+                }
+                if (jourDonne && !heureSpecifiee) {
+                    throw new IllegalArgumentException("--day/--date nécessite --time pour \"open-file\".");
+                }
+                nomCours = nomCoursOption;
+            }
         }
 
-        Mode mode;
-        if (semaine) {
-            mode = Mode.SEMAINE;
-        } else if (precedent) {
-            mode = Mode.PRECEDENT;
-        } else if (suivant) {
-            mode = Mode.SUIVANT;
-        } else if (jourSpecifie && !heureSpecifiee) {
-            mode = Mode.LISTE_JOUR;
-        } else {
-            mode = Mode.CRENEAU_COURANT;
-        }
+        return new ArgumentsLecture(commande, jour, heure, suivant, precedent, missingInfo, nomCours, nomFichier);
+    }
 
-        return new ArgumentsLecture(jour, heure, mode, listerFichiers);
+    private static void interdireSiPresent(boolean present, String option) {
+        if (present) {
+            throw new IllegalArgumentException(
+                    "L'option " + option + " n'est pas applicable à cette commande.");
+        }
     }
 
     private static String valeurSuivante(String[] args, int index, String option) {

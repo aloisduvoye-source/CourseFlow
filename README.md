@@ -42,15 +42,21 @@ Point important de la structure : les fichiers appartiennent au **Cours**, pas a
 
 ## La commande `lecture`
 
-Lancée dans un terminal, `lecture` :
-- sans argument : ouvre les fichiers du créneau correspondant au jour/heure actuels,
-- `--jour <nom>` et/ou `--heure HH:mm` : cible un autre créneau (ex. préparer la séance suivante) — `--jour` seul, **sans** `--heure`, liste plutôt tous les créneaux de ce jour (utile pour voir le programme de la journée sans rien ouvrir),
-- `-n` / `-p` : ouvre le créneau **suivant**/**précédent** dans la semaine plutôt que celui du moment (boucle : après le dernier créneau du Dimanche, `-n` revient au premier du Lundi, et inversement pour `-p`) — si ce créneau tombe un autre jour que celui demandé, un message le signale avant d'ouvrir les fichiers,
-- `-l` : liste les fichiers du créneau résolu (courant, ciblé, ou via `-n`/`-p`) au lieu de les ouvrir,
-- `-s` : affiche l'emploi du temps de la semaine entière sous forme de tableau ASCII dans le terminal (jour courant marqué d'un `*`), sans rien ouvrir — un tableau à bordures, une colonne par jour, où chaque créneau est une boîte précédée de sa plage horaire, affichant le nom du cours en majuscules, la salle et la description si renseignées, puis un fichier par heure de durée (avec un `+N fichiers` si tous ne tiennent pas). Les boîtes d'un même jour s'empilent par ordre chronologique, alignées par rang (1er créneau du jour sur la même ligne que le 1er des autres jours, etc.), pas par heure absolue,
+Lancée dans un terminal, `lecture` fonctionne par sous-commandes (`slot`, `slots`, `schedule`,
+`courses`, `course`, `open-file`) et options longues (`--next`, `--previous`, `--date`,
+`--day`, `--time`) :
+- sans sous-commande : ouvre les fichiers du créneau ciblé (courant par défaut),
+- `--day <nom>`/`--date <AAAA-MM-JJ>` + `--time HH:mm` : cible un créneau précis,
+- `--next` / `--previous` : ouvre le créneau **suivant**/**précédent** dans la semaine plutôt que celui du moment (boucle : après le dernier créneau du Dimanche, `--next` revient au premier du Lundi, et inversement) — si ce créneau tombe un autre jour que la référence, un message le signale avant d'ouvrir les fichiers,
+- `slot` : affiche les informations du créneau ciblé (cours, salle, description, fichiers) sans rien ouvrir — mêmes options de ciblage que ci-dessus,
+- `slots` : liste tous les créneaux d'un jour (aujourd'hui par défaut, ou via `--day`/`--date`),
+- `schedule` : affiche l'emploi du temps de la semaine entière sous forme de tableau ASCII dans le terminal (jour courant marqué d'un `*`) — un tableau à bordures, une colonne par jour, où chaque créneau est une boîte précédée de sa plage horaire, affichant le nom du cours en majuscules, la salle et la description si renseignées, puis un fichier par heure de durée (avec un `+N fichiers` si tous ne tiennent pas). Les boîtes d'un même jour s'empilent par ordre chronologique, alignées par rang, pas par heure absolue,
+- `courses` : liste tous les cours (avec leur nombre de fichiers) ; `--missing-info` ne liste que ceux sans aucun créneau planifié,
+- `course [NOM]` : affiche le détail d'un cours (couleur, bibliothèque de fichiers complète, créneaux où il est programmé),
+- `open-file --file [NOM]` : ouvre un fichier précis, soit dans la bibliothèque d'un cours (`--course [NOM]`), soit dans un créneau (`--day`/`--date` + `--time`),
 - `.` : lance l'application graphique elle-même, comme `code .` — retourne la main immédiatement, sans bloquer le terminal.
 
-Cela permet à l'utilisateur d'avoir, en une seule commande, tous les documents de son heure de cours ouverts et prêts à l'emploi — un gain de temps immédiat entre deux cours ou juste avant d'entrer en classe.
+La recherche de cours/fichier par nom est exacte (insensible à la casse). Cela permet à l'utilisateur d'avoir, en une seule commande, tous les documents de son heure de cours ouverts et prêts à l'emploi — un gain de temps immédiat entre deux cours ou juste avant d'entrer en classe.
 
 Techniquement, cette commande fonctionne **sans lancer l'interface graphique** (sauf avec `.`) : [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) est un point d'entrée headless qui lit les mêmes données que l'application JavaFX ([EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java)) et réutilise la même logique d'ouverture de fichiers ([OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java)). Voir [Installation et démarrage](#installation-et-démarrage) pour l'utiliser.
 
@@ -88,16 +94,22 @@ ln -s "$(pwd)/bin/lecture" ~/.local/bin/lecture
 ```
 (`~/.local/bin` doit être dans le `PATH`.) Ensuite, depuis n'importe où :
 ```
-lecture                              # ouvre les fichiers du créneau courant (jour/heure système)
-lecture --jour Mardi --heure 09:30   # cible un autre créneau
-lecture --jour Mardi                 # liste les créneaux du Mardi, sans rien ouvrir
-lecture -n                           # ouvre le créneau suivant
-lecture -p                           # ouvre le créneau précédent
-lecture -l                           # liste les fichiers du créneau courant, sans les ouvrir
-lecture -n -l                        # liste les fichiers du créneau suivant
-lecture .                            # lance l'application graphique (comme "code .")
-lecture -s                           # affiche l'emploi du temps de la semaine en grille ASCII
-lecture --help                       # liste toutes les options (aussi -h)
+lecture                                    # ouvre les fichiers du créneau courant (jour/heure système)
+lecture --day mardi --time 09:30           # cible un autre créneau
+lecture --next                             # ouvre le créneau suivant
+lecture --previous                         # ouvre le créneau précédent
+
+lecture slot                               # affiche les infos du créneau courant, sans rien ouvrir
+lecture slots --day mardi                  # liste les créneaux du Mardi
+lecture schedule                           # affiche l'emploi du temps de la semaine en grille ASCII
+
+lecture courses                            # liste tous les cours
+lecture courses --missing-info             # cours sans aucun créneau planifié
+lecture course "6e A - Mathématiques"      # détail d'un cours
+
+lecture open-file --course "6e A - Mathématiques" --file exercices.pdf
+lecture .                                  # lance l'application graphique (comme "code .")
+lecture --help                             # liste toutes les commandes et options
 ```
 
 ### Générer des données de test
@@ -114,7 +126,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle ou import d'un dossier entier) ou en retirer plusieurs à la fois, supprimer un cours. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
 - **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille des 7 jours (7h-20h), créer/modifier/supprimer un créneau via une boîte de dialogue (y compris salle et description, tous deux optionnels), rendu coloré par cours affichant nom + salle + horaires + description directement sur le bloc. Un créneau placé peut être glissé à la souris (déplacement libre entre jours et horaires, par pas de 10 min) et redimensionné en tirant son bord haut/bas. La largeur des colonnes s'adapte à la largeur de la fenêtre. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
 - **Sélection de fichiers par créneau (UI)** ✅ — dans la boîte de dialogue d'un créneau : liste à cocher des fichiers du Cours associé (tout coché par défaut à la création), boutons "Tout cocher"/"Tout décocher", et bouton "Ouvrir maintenant" qui ouvre les fichiers cochés sans passer par le terminal. Testé manuellement dans l'application.
-- **Commande `lecture` (CLI)** ✅ — [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](src/main/java/com/teacherflow/cli/ArgumentsLecture.java) + [NavigationCreneaux](src/main/java/com/teacherflow/cli/NavigationCreneaux.java) + [GrilleAscii](src/main/java/com/teacherflow/cli/GrilleAscii.java) (testés unitairement) : créneau courant, liste du jour (`--jour` seul), créneau précédent/suivant (`-p`/`-n`, avec avertissement si le créneau résolu tombe un autre jour que celui demandé), liste des fichiers sans les ouvrir (`-l`), grille ASCII de la semaine (`-s`), et lancement de l'appli graphique (`lecture .`) — ouvre les fichiers via la logique partagée [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java). Appel `java` direct (classpath mis en cache) plutôt que `mvn` à chaque exécution. Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
+- **Commande `lecture` (CLI)** ✅ — [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](src/main/java/com/teacherflow/cli/ArgumentsLecture.java) + [NavigationCreneaux](src/main/java/com/teacherflow/cli/NavigationCreneaux.java) + [GrilleAscii](src/main/java/com/teacherflow/cli/GrilleAscii.java) (testés unitairement) : sous-commandes `slot`/`slots`/`schedule`/`courses`/`course`/`open-file`, ciblage par `--day`/`--date`+`--time` ou `--next`/`--previous` (avertissement si le créneau résolu tombe un autre jour que la référence), et lancement de l'appli graphique (`lecture .`) — ouvre les fichiers via la logique partagée [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java). Appel `java` direct (classpath mis en cache) plutôt que `mvn` à chaque exécution. Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
 - **Navigation** : barre latérale verticale (Cours / Emploi du temps), fenêtre maximisée au lancement.
 - **Reste à construire** : confort/robustesse, fonctionnalités avancées et packaging natif (Phases 6-8, optionnelles).
 
@@ -155,11 +167,12 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - [x] Détection automatique du créneau courant (jour + heure système)
 - [x] Ouverture des fichiers associés via une commande native (`xdg-open`/`open`/`start`, voir Stack technique)
 - [x] Gestion des cas limites : aucun créneau à l'heure actuelle (message clair), fichier non ouvrable (signalé sans bloquer les autres), plusieurs fichiers ouverts en une fois
-- [x] Option pour cibler un autre créneau que celui du moment (`--jour`, `--heure`)
-- [x] `--jour` seul liste les créneaux du jour au lieu d'en ouvrir un
-- [x] `-p`/`-n` ouvrent le créneau précédent/suivant de la semaine (navigation circulaire), avec avertissement si le jour résolu diffère du jour demandé
-- [x] `-l` liste les fichiers du créneau résolu au lieu de les ouvrir
-- [x] `-s` affiche l'emploi du temps de la semaine en tableau ASCII (une colonne par jour, jour courant marqué), créneaux rendus en boîtes empilées par ordre chronologique (nom/salle/description toujours affichés, fichiers selon la durée)
+- [x] Option pour cibler un autre créneau que celui du moment (`--day`/`--date`, `--time`)
+- [x] `slots` liste les créneaux d'un jour au lieu d'en ouvrir un
+- [x] `--next`/`--previous` ouvrent le créneau précédent/suivant de la semaine (navigation circulaire), avec avertissement si le jour résolu diffère du jour demandé
+- [x] `slot` affiche les informations du créneau résolu (cours, salle, description, fichiers) au lieu de les ouvrir
+- [x] `schedule` affiche l'emploi du temps de la semaine en tableau ASCII (une colonne par jour, jour courant marqué), créneaux rendus en boîtes empilées par ordre chronologique (nom/salle/description toujours affichés, fichiers selon la durée)
+- [x] `courses`/`course`/`open-file` : lister les cours (avec filtre `--missing-info`), afficher le détail d'un cours, ouvrir un fichier précis par nom (dans un cours ou un créneau)
 - [x] `lecture .` lance l'application graphique (comme `code .`), détachée du terminal
 - [x] Script d'installation ([bin/lecture](bin/lecture)) appelant le point d'entrée CLI via `mvn javafx:run -Djavafx.mainClass=...`
 
