@@ -12,6 +12,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -41,6 +42,8 @@ import java.util.stream.Collectors;
 public class CoursGestionPane extends BorderPane {
 
     private static final String COULEUR_PAR_DEFAUT = "#3498db";
+    private static final String TOUS_LES_DOSSIERS = "Tous les dossiers";
+    private static final String SANS_DOSSIER = "Sans dossier";
 
     private final EmploiDuTemps emploiDuTemps;
     private final Runnable surChangement;
@@ -53,6 +56,7 @@ public class CoursGestionPane extends BorderPane {
     private final FilteredList<Fichier> fichiersFiltres = new FilteredList<>(tousLesFichiers);
     private final TextField rechercheCours = new TextField();
     private final TextField rechercheFichiers = new TextField();
+    private final ComboBox<String> filtreDossier = new ComboBox<>();
     private final TextField champNom = new TextField();
     private final ColorPicker selecteurCouleur = new ColorPicker();
     private final Label messageVide = new Label("Sélectionnez un cours ou créez-en un nouveau.");
@@ -119,6 +123,11 @@ public class CoursGestionPane extends BorderPane {
         rechercheFichiers.setPromptText("Rechercher un fichier...");
         rechercheFichiers.textProperty().addListener((obs, ancien, texte) -> fichiersFiltres.setPredicate(this::fichierCorrespond));
 
+        filtreDossier.setOnAction(e -> fichiersFiltres.setPredicate(this::fichierCorrespond));
+
+        HBox ligneRecherche = new HBox(8, rechercheFichiers, filtreDossier);
+        HBox.setHgrow(rechercheFichiers, Priority.ALWAYS);
+
         Button boutonAjouterFichier = new Button("Ajouter des fichiers...");
         boutonAjouterFichier.setOnAction(e -> ajouterFichiers());
 
@@ -135,12 +144,23 @@ public class CoursGestionPane extends BorderPane {
 
         panneauDetails.getChildren().addAll(
                 titreNomCouleur, ligneNomCouleur,
-                titreFichiers, rechercheFichiers, listeFichiers, boutonsFichiers);
+                titreFichiers, ligneRecherche, listeFichiers, boutonsFichiers);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
         return panneauDetails;
     }
 
     private boolean fichierCorrespond(Fichier fichier) {
+        String dossierChoisi = filtreDossier.getValue();
+        if (dossierChoisi != null && !dossierChoisi.equals(TOUS_LES_DOSSIERS)) {
+            boolean sansDossier = dossierChoisi.equals(SANS_DOSSIER);
+            boolean correspondDossier = sansDossier
+                    ? fichier.getDossier() == null || fichier.getDossier().isBlank()
+                    : dossierChoisi.equals(fichier.getDossier());
+            if (!correspondDossier) {
+                return false;
+            }
+        }
+
         String texte = rechercheFichiers.getText();
         if (texte == null || texte.isBlank()) {
             return true;
@@ -151,6 +171,22 @@ public class CoursGestionPane extends BorderPane {
         boolean libelleCorrespond = libelle != null && libelle.toLowerCase().contains(recherche);
         boolean tagCorrespond = fichier.getTags().stream().anyMatch(tag -> tag.toLowerCase().contains(recherche));
         return libelleCorrespond || tagCorrespond;
+    }
+
+    private void rafraichirFiltreDossier(Cours cours, boolean conserverSelection) {
+        String selectionActuelle = filtreDossier.getValue();
+        List<String> dossiers = cours.getFichiers().stream()
+                .map(Fichier::getDossier)
+                .filter(d -> d != null && !d.isBlank())
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.toList());
+
+        filtreDossier.getItems().setAll(TOUS_LES_DOSSIERS, SANS_DOSSIER);
+        filtreDossier.getItems().addAll(dossiers);
+        filtreDossier.setValue(
+                conserverSelection && selectionActuelle != null && filtreDossier.getItems().contains(selectionActuelle)
+                        ? selectionActuelle : TOUS_LES_DOSSIERS);
     }
 
     private void afficherDetails(Cours cours) {
@@ -166,6 +202,8 @@ public class CoursGestionPane extends BorderPane {
                 cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT));
         rechercheFichiers.clear();
         tousLesFichiers.setAll(cours.getFichiers());
+        rafraichirFiltreDossier(cours, false);
+        fichiersFiltres.setPredicate(this::fichierCorrespond);
     }
 
     private void creerCours() {
@@ -353,11 +391,19 @@ public class CoursGestionPane extends BorderPane {
 
     private class FichierCell extends ListCell<Fichier> {
         private final Label libelle = new Label();
+        private final Button boutonDossier = new Button("Dossier");
         private final Button boutonTags = new Button("Tags");
         private final Button boutonSupprimer = new Button();
         private final HBox ligne = new HBox(8);
 
         FichierCell() {
+            boutonDossier.setOnAction(e -> {
+                Fichier fichier = getItem();
+                if (fichier != null) {
+                    modifierDossier(fichier);
+                }
+            });
+
             boutonTags.setOnAction(e -> {
                 Fichier fichier = getItem();
                 if (fichier != null) {
@@ -378,7 +424,7 @@ public class CoursGestionPane extends BorderPane {
             HBox.setHgrow(libelle, Priority.ALWAYS);
 
             ligne.setAlignment(Pos.CENTER_LEFT);
-            ligne.getChildren().addAll(libelle, boutonTags, boutonSupprimer);
+            ligne.getChildren().addAll(libelle, boutonDossier, boutonTags, boutonSupprimer);
         }
 
         @Override
@@ -390,12 +436,36 @@ public class CoursGestionPane extends BorderPane {
             }
             String texte = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
                     ? fichier.getNomAffichage() : fichier.getChemin();
+            if (fichier.getDossier() != null && !fichier.getDossier().isBlank()) {
+                texte = fichier.getDossier() + " / " + texte;
+            }
             if (!fichier.getTags().isEmpty()) {
                 texte += "  [" + String.join(", ", fichier.getTags()) + "]";
             }
             libelle.setText(texte);
             setGraphic(ligne);
         }
+    }
+
+    private void modifierDossier(Fichier fichier) {
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return;
+        }
+        TextInputDialog dialogue = new TextInputDialog(fichier.getDossier() != null ? fichier.getDossier() : "");
+        dialogue.setTitle("Dossier");
+        dialogue.setHeaderText(null);
+        dialogue.setContentText("Nom du dossier (vide pour aucun) :");
+        Optional<String> resultat = dialogue.showAndWait();
+        if (resultat.isEmpty()) {
+            return;
+        }
+        String dossier = resultat.get().trim();
+        fichier.setDossier(dossier.isBlank() ? null : dossier);
+        listeFichiers.refresh();
+        rafraichirFiltreDossier(selectionne, true);
+        fichiersFiltres.setPredicate(this::fichierCorrespond);
+        notifierChangement();
     }
 
     private void modifierTags(Fichier fichier) {
