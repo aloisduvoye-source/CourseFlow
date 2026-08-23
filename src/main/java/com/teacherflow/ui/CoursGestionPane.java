@@ -22,6 +22,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TitledPane;
@@ -73,6 +74,7 @@ public class CoursGestionPane extends BorderPane {
     private final ListView<Fichier> listeFichiersCoursDefaut = new ListView<>();
     private final Label messageVide = new Label("Sélectionnez un cours ou créez-en un nouveau.");
     private final VBox panneauDetails = new VBox(12);
+    private final ScrollPane defilementDetails = new ScrollPane();
 
     public CoursGestionPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
@@ -112,7 +114,7 @@ public class CoursGestionPane extends BorderPane {
                 || (cours.getNom() != null && cours.getNom().toLowerCase().contains(texte.toLowerCase()));
     }
 
-    private VBox construireDetails() {
+    private ScrollPane construireDetails() {
         champNom.setPromptText("Nom du cours");
         champNom.textProperty().addListener((obs, ancien, nouveau) -> mettreAJourNomEnMemoire(nouveau));
         champNom.focusedProperty().addListener((obs, avaitFocus, aFocus) -> {
@@ -137,7 +139,7 @@ public class CoursGestionPane extends BorderPane {
 
         listeFichiers.setCellFactory(vue -> new FichierCell());
         listeFichiers.setItems(fichiersFiltres);
-        VBox.setVgrow(listeFichiers, Priority.ALWAYS);
+        listeFichiers.setPrefHeight(300);
         listeFichiers.setOnDragOver(e -> {
             if (e.getGestureSource() != listeFichiers && e.getDragboard().hasFiles()) {
                 e.acceptTransferModes(TransferMode.COPY);
@@ -175,7 +177,10 @@ public class CoursGestionPane extends BorderPane {
                 titreDossiersReferences, conteneurDossiersReferences,
                 panneauCoursDefaut);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
-        return panneauDetails;
+
+        defilementDetails.setContent(panneauDetails);
+        defilementDetails.setFitToWidth(true);
+        return defilementDetails;
     }
 
     private boolean fichierCorrespond(Fichier fichier) {
@@ -193,7 +198,7 @@ public class CoursGestionPane extends BorderPane {
 
     private void afficherDetails(Cours cours) {
         boolean unCoursSelectionne = cours != null;
-        setCenter(unCoursSelectionne ? panneauDetails : messageVide);
+        setCenter(unCoursSelectionne ? defilementDetails : messageVide);
 
         if (!unCoursSelectionne) {
             return;
