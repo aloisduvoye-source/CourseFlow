@@ -222,7 +222,7 @@ public class EmploiDuTempsPane extends BorderPane {
             LocalTime heure = heureDebutGrille.plusMinutes(minute);
             if (heure.getMinute() == 0) {
                 Label label = new Label(heure.toString());
-                label.setStyle("-fx-text-fill: gray; -fx-font-size: 10;");
+                label.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 10;");
                 label.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE - 6);
                 label.setLayoutX(4);
                 pane.getChildren().add(label);
@@ -240,14 +240,14 @@ public class EmploiDuTempsPane extends BorderPane {
         double largeurTotale = joursAffiches.length * largeurColonneJour;
         Pane pane = new Pane();
         pane.setPrefSize(largeurTotale, hauteur);
-        pane.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 0 1;");
+        pane.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-width: 0 0 0 1;");
 
         int indexAujourdhui = indexDuJour(LocalDate.now().getDayOfWeek());
         if (indexAujourdhui >= 0) {
             Region surbrillance = new Region();
             surbrillance.setPrefSize(largeurColonneJour, hauteur);
             surbrillance.setLayoutX(indexAujourdhui * largeurColonneJour);
-            surbrillance.setStyle("-fx-background-color: #f5f5f5;");
+            surbrillance.setStyle("-fx-background-color: -color-bg-subtle;");
             surbrillance.setMouseTransparent(true);
             pane.getChildren().add(surbrillance);
         }
@@ -256,7 +256,7 @@ public class EmploiDuTempsPane extends BorderPane {
             Region ligne = new Region();
             ligne.setPrefSize(largeurTotale, 1);
             ligne.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE);
-            ligne.setStyle("-fx-background-color: #eeeeee;");
+            ligne.setStyle("-fx-background-color: -color-border-muted;");
             ligne.setMouseTransparent(true);
             pane.getChildren().add(ligne);
         }
@@ -264,7 +264,7 @@ public class EmploiDuTempsPane extends BorderPane {
             Region separateur = new Region();
             separateur.setPrefSize(1, hauteur);
             separateur.setLayoutX(i * largeurColonneJour);
-            separateur.setStyle("-fx-background-color: #e0e0e0;");
+            separateur.setStyle("-fx-background-color: -color-border-default;");
             separateur.setMouseTransparent(true);
             pane.getChildren().add(separateur);
         }
@@ -303,7 +303,7 @@ public class EmploiDuTempsPane extends BorderPane {
                 cellule.setLayoutY(MARGE_VERTICALE + minuteDebut * PIXELS_PAR_MINUTE);
                 cellule.setPrefSize(largeurColonneJour, (minuteFin - minuteDebut) * PIXELS_PAR_MINUTE);
                 cellule.setCursor(Cursor.HAND);
-                cellule.setStyle("-fx-background-color: rgba(52, 152, 219, 0.08);");
+                cellule.setStyle("-fx-background-color: -color-accent-subtle;");
                 cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, bloc.getDebut(), bloc.getFin()));
                 pane.getChildren().add(cellule);
             }

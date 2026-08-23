@@ -77,7 +77,7 @@ public class ParametresPane extends BorderPane {
 
         setPadding(new Insets(16));
 
-        grilleBlocs.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 1;");
+        grilleBlocs.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-width: 1;");
         grilleBlocs.setOnMouseClicked(this::surClicGrilleVide);
         actualiserGrilleBlocs();
 
@@ -262,7 +262,7 @@ public class ParametresPane extends BorderPane {
             LocalTime heure = parametres.getHeureDebutGrille().plusMinutes(minute);
             if (heure.getMinute() == 0) {
                 Label label = new Label(heure.toString());
-                label.setStyle("-fx-text-fill: gray; -fx-font-size: 10;");
+                label.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 10;");
                 label.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE - 6);
                 label.setLayoutX(4);
                 pane.getChildren().add(label);
@@ -284,7 +284,7 @@ public class ParametresPane extends BorderPane {
             Region ligne = new Region();
             ligne.setPrefSize(LARGEUR_BLOC, 1);
             ligne.setLayoutY(MARGE_VERTICALE + minute * PIXELS_PAR_MINUTE);
-            ligne.setStyle("-fx-background-color: #eeeeee;");
+            ligne.setStyle("-fx-background-color: -color-border-muted;");
             ligne.setMouseTransparent(true);
             grilleBlocs.getChildren().add(ligne);
         }
@@ -459,7 +459,7 @@ public class ParametresPane extends BorderPane {
             setAlignment(Pos.TOP_LEFT);
             setPadding(new Insets(3, 2, 2, 4));
             setPrefWidth(LARGEUR_BLOC - 4);
-            setStyle("-fx-background-color: #3498db;");
+            setStyle("-fx-background-color: -color-accent-emphasis;");
 
             actualiser(toMinutes(bloc.getDebut()), toMinutes(bloc.getFin()));
 
