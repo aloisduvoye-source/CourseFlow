@@ -26,6 +26,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -136,6 +138,18 @@ public class CoursGestionPane extends BorderPane {
         listeFichiers.setCellFactory(vue -> new FichierCell());
         listeFichiers.setItems(fichiersFiltres);
         VBox.setVgrow(listeFichiers, Priority.ALWAYS);
+        listeFichiers.setOnDragOver(e -> {
+            if (e.getGestureSource() != listeFichiers && e.getDragboard().hasFiles()) {
+                e.acceptTransferModes(TransferMode.COPY);
+            }
+            e.consume();
+        });
+        listeFichiers.setOnDragDropped(e -> {
+            Dragboard dragboard = e.getDragboard();
+            boolean succes = deposerFichiers(dragboard);
+            e.setDropCompleted(succes);
+            e.consume();
+        });
 
         rechercheFichiers.setPromptText("Rechercher un fichier...");
         rechercheFichiers.textProperty().addListener((obs, ancien, texte) -> fichiersFiltres.setPredicate(this::fichierCorrespond));
@@ -379,6 +393,33 @@ public class CoursGestionPane extends BorderPane {
                 (int) Math.round(couleur.getBlue() * 255)));
         listeCours.refresh();
         notifierChangement();
+    }
+
+    /**
+     * Glisser-déposer des fichiers depuis l'explorateur du système sur la liste : ajoutés au
+     * cours sélectionné au même titre que via "Ajouter des fichiers...". Un dossier déposé est
+     * ignoré (pas d'import récursif implicite ici — voir "Référencer un dossier...").
+     */
+    private boolean deposerFichiers(Dragboard dragboard) {
+        if (!dragboard.hasFiles()) {
+            return false;
+        }
+        Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
+        if (selectionne == null) {
+            return false;
+        }
+        boolean auMoinsUnFichier = false;
+        for (File fichier : dragboard.getFiles()) {
+            if (fichier.isFile()) {
+                selectionne.ajouterFichier(fichier.getAbsolutePath(), fichier.getName());
+                auMoinsUnFichier = true;
+            }
+        }
+        if (auMoinsUnFichier) {
+            tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(selectionne));
+            notifierChangement();
+        }
+        return auMoinsUnFichier;
     }
 
     private void ajouterFichiers() {

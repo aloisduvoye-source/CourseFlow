@@ -515,6 +515,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
         ButtonType boutonValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
         ButtonType boutonSupprimer = new ButtonType("Supprimer", ButtonBar.ButtonData.LEFT);
+        ButtonType boutonDupliquer = new ButtonType("Dupliquer", ButtonBar.ButtonData.LEFT);
         ButtonType boutonOuvrir = new ButtonType("Ouvrir maintenant", ButtonBar.ButtonData.APPLY);
 
         Dialog<ButtonType> dialogue = new Dialog<>();
@@ -522,7 +523,7 @@ public class EmploiDuTempsPane extends BorderPane {
         dialogue.setHeaderText(NomsJours.nom(jour));
         dialogue.getDialogPane().setContent(formulaire);
         if (creneauExistant != null) {
-            dialogue.getDialogPane().getButtonTypes().add(boutonSupprimer);
+            dialogue.getDialogPane().getButtonTypes().addAll(boutonSupprimer, boutonDupliquer);
         }
         dialogue.getDialogPane().getButtonTypes().addAll(boutonOuvrir, boutonValider, ButtonType.CANCEL);
 
@@ -556,7 +557,7 @@ public class EmploiDuTempsPane extends BorderPane {
                 .collect(Collectors.toList());
 
         Creneau creneau;
-        if (creneauExistant == null) {
+        if (creneauExistant == null || resultat.get() == boutonDupliquer) {
             creneau = emploiDuTemps.ajouterCreneau(jour, debut, fin, coursChoisi.getId());
         } else {
             creneau = creneauExistant;
