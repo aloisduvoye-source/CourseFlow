@@ -25,6 +25,8 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -39,7 +41,9 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -80,12 +84,16 @@ public class EmploiDuTempsPane extends BorderPane {
     private int pasMinutes = 10;
     private LocalTime heureDebutGrille = LocalTime.of(7, 0);
     private LocalTime heureFinGrille = LocalTime.of(20, 0);
+    private final Deque<List<Creneau>> pileAnnuler = new ArrayDeque<>();
+    private final Deque<List<Creneau>> pileRetablir = new ArrayDeque<>();
 
     public EmploiDuTempsPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
         this.surChangement = surChangement;
 
         setPadding(new Insets(16));
+        setFocusTraversable(true);
+        setOnKeyPressed(this::gererRaccourciClavier);
 
         defilement.setContent(ligneColonnes);
         defilement.setFitToWidth(false);
@@ -95,6 +103,61 @@ public class EmploiDuTempsPane extends BorderPane {
         setCenter(new VBox(ligneEntetes, defilement));
 
         rafraichir();
+    }
+
+    private void gererRaccourciClavier(KeyEvent e) {
+        if (e.isControlDown() && e.getCode() == KeyCode.Z) {
+            if (e.isShiftDown()) {
+                retablir();
+            } else {
+                annuler();
+            }
+            e.consume();
+        }
+    }
+
+    /**
+     * Capture un instantané profond des créneaux avant une mutation, pour pouvoir l'annuler
+     * (Ctrl+Z). Toute nouvelle action après un "annuler" invalide la pile "rétablir".
+     */
+    private void enregistrerAvantModification() {
+        pileAnnuler.push(copierCreneaux());
+        pileRetablir.clear();
+    }
+
+    private void annuler() {
+        if (pileAnnuler.isEmpty()) {
+            return;
+        }
+        pileRetablir.push(copierCreneaux());
+        restaurer(pileAnnuler.pop());
+    }
+
+    private void retablir() {
+        if (pileRetablir.isEmpty()) {
+            return;
+        }
+        pileAnnuler.push(copierCreneaux());
+        restaurer(pileRetablir.pop());
+    }
+
+    private void restaurer(List<Creneau> etat) {
+        emploiDuTemps.setCreneaux(etat);
+        notifierChangement();
+        rafraichir();
+    }
+
+    private List<Creneau> copierCreneaux() {
+        return emploiDuTemps.getCreneaux().stream().map(EmploiDuTempsPane::copierCreneau).collect(Collectors.toList());
+    }
+
+    private static Creneau copierCreneau(Creneau original) {
+        Creneau copie = new Creneau(original.getJour(), original.getHeureDebut(), original.getHeureFin(), original.getCoursId());
+        copie.setId(original.getId());
+        copie.setSalle(original.getSalle());
+        copie.setDescription(original.getDescription());
+        copie.setFichiersSelectionnesIds(new ArrayList<>(original.getFichiersSelectionnesIds()));
+        return copie;
     }
 
     private void mettreAJourEntetes() {
@@ -410,6 +473,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
             int debutFinal = toMinutes(heureDebutGrille) + (int) Math.round((getLayoutY() - MARGE_VERTICALE) / PIXELS_PAR_MINUTE);
             int finFinal = debutFinal + (int) Math.round(getPrefHeight() / PIXELS_PAR_MINUTE);
+            enregistrerAvantModification();
             creneau.setJour(joursAffiches[dayIndexCourant]);
             creneau.setHeureDebut(minutesVersHeure(debutFinal));
             creneau.setHeureFin(minutesVersHeure(finFinal));
@@ -533,6 +597,7 @@ public class EmploiDuTempsPane extends BorderPane {
         }
 
         if (resultat.get() == boutonSupprimer) {
+            enregistrerAvantModification();
             emploiDuTemps.supprimerCreneau(creneauExistant.getId());
             notifierChangement();
             rafraichir();
@@ -550,6 +615,7 @@ public class EmploiDuTempsPane extends BorderPane {
             erreur.showAndWait();
             return;
         }
+        enregistrerAvantModification();
 
         List<UUID> idsSelectionnes = emploiDuTemps.fichiersVisibles(coursChoisi).stream()
                 .map(Fichier::getId)

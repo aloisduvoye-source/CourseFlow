@@ -71,6 +71,7 @@ public class App extends Application {
         boutonEmploiDuTemps.setOnAction(e -> {
             afficherVue(vueEmploiDuTemps, vueAccueil, vueCours, vueEmploiDuTemps, vueParametres);
             vueEmploiDuTemps.rafraichir();
+            vueEmploiDuTemps.requestFocus();
         });
         boutonParametres.setOnAction(e -> afficherVue(vueParametres, vueAccueil, vueCours, vueEmploiDuTemps, vueParametres));
 
