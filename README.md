@@ -179,7 +179,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 
 ### Phase 6 — Confort & robustesse (en cours)
 - [x] Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur — [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java) détecte un chemin local manquant avant de tenter l'ouverture (la commande native comme `xdg-open` échoue silencieusement de notre point de vue sinon) et renvoie un message par fichier (libellé + raison)
-- [ ] Annuler/rétablir (Ctrl+Z) sur l'emploi du temps, pour rattraper un créneau déplacé ou supprimé par erreur
+- [x] Annuler/rétablir (Ctrl+Z / Ctrl+Maj+Z) sur l'emploi du temps, pour rattraper un créneau déplacé, redimensionné, supprimé, dupliqué ou modifié par erreur — pile d'instantanés dans [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java), scopée à cet onglet (n'affecte pas les cours)
 - [x] Édition rapide — glisser-déposer des fichiers depuis l'explorateur du système sur la liste d'un cours ; dupliquer un créneau (bouton dans sa boîte de dialogue, la copie se replace ensuite à la souris)
 - [ ] Édition rapide — réorganisation des fichiers dans la liste d'un cours, duplication d'un jour entier vers un autre (mis de côté pour l'instant)
 - [x] Recherche/filtre dans la liste des cours et fichiers — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : champ de recherche par nom (cours et fichiers), la recherche fichiers matche aussi les tags
