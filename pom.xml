@@ -14,6 +14,7 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
+        <atlantafx.version>2.1.0</atlantafx.version>
         <jackson.version>2.17.2</jackson.version>
         <junit.version>5.10.3</junit.version>
         <javafx.mainClass>com.teacherflow.app/com.teacherflow.app.App</javafx.mainClass>
@@ -29,6 +30,11 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.mkpaz</groupId>
+            <artifactId>atlantafx-base</artifactId>
+            <version>${atlantafx.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
