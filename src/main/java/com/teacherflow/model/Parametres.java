@@ -31,6 +31,7 @@ public class Parametres {
     private List<PlageHoraire> blocs = new ArrayList<>(blocsParDefaut());
     private List<String> tagsDisponibles = new ArrayList<>(TAGS_PAR_DEFAUT);
     private UUID coursDefautId;
+    private boolean themeSombre = false;
 
     private static List<PlageHoraire> blocsParDefaut() {
         List<PlageHoraire> blocs = new ArrayList<>();
@@ -97,5 +98,13 @@ public class Parametres {
 
     public void setCoursDefautId(UUID coursDefautId) {
         this.coursDefautId = coursDefautId;
+    }
+
+    public boolean isThemeSombre() {
+        return themeSombre;
+    }
+
+    public void setThemeSombre(boolean themeSombre) {
+        this.themeSombre = themeSombre;
     }
 }

@@ -68,6 +68,7 @@ class DataStoreTest {
                 new PlageHoraire(LocalTime.of(9, 0), LocalTime.of(10, 0)),
                 new PlageHoraire(LocalTime.of(10, 20), LocalTime.of(11, 20))));
         emploiDuTemps.getParametres().setTagsDisponibles(List.of("dm", "td", "correction", "cm", "projet"));
+        emploiDuTemps.getParametres().setThemeSombre(true);
 
         dataStore.sauvegarder(emploiDuTemps);
         EmploiDuTemps recharge = dataStore.charger();
@@ -79,6 +80,7 @@ class DataStoreTest {
         assertEquals(2, recharge.getParametres().getBlocs().size());
         assertEquals(LocalTime.of(10, 20), recharge.getParametres().getBlocs().get(1).getDebut());
         assertEquals(List.of("dm", "td", "correction", "cm", "projet"), recharge.getParametres().getTagsDisponibles());
+        assertTrue(recharge.getParametres().isThemeSombre());
     }
 
     @Test

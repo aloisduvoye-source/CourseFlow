@@ -59,4 +59,11 @@ class ParametresTest {
 
         assertNull(parametres.getCoursDefautId());
     }
+
+    @Test
+    void parDefautLeThemeClairEstActif() {
+        Parametres parametres = new Parametres();
+
+        assertFalse(parametres.isThemeSombre());
+    }
 }

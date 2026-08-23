@@ -1,5 +1,7 @@
 package com.teacherflow.app;
 
+import atlantafx.base.theme.PrimerDark;
+import atlantafx.base.theme.PrimerLight;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.persistence.DataStore;
 import com.teacherflow.ui.AccueilPane;
@@ -11,6 +13,7 @@ import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
@@ -31,6 +34,7 @@ public class App extends Application {
     @Override
     public void start(Stage stage) {
         emploiDuTemps = chargerDonnees();
+        appliquerTheme(emploiDuTemps.getParametres().isThemeSombre());
 
         AccueilPane vueAccueil = new AccueilPane(emploiDuTemps);
         CoursGestionPane vueCours = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
@@ -80,7 +84,17 @@ public class App extends Application {
         Region espaceur = new Region();
         VBox.setVgrow(espaceur, Priority.ALWAYS);
 
-        VBox barreLaterale = new VBox(4, titreApp, boutonAccueil, boutonCours, boutonEmploiDuTemps, boutonParametres);
+        CheckBox caseThemeSombre = new CheckBox("Thème sombre");
+        caseThemeSombre.setSelected(emploiDuTemps.getParametres().isThemeSombre());
+        caseThemeSombre.setOnAction(e -> {
+            boolean sombre = caseThemeSombre.isSelected();
+            emploiDuTemps.getParametres().setThemeSombre(sombre);
+            appliquerTheme(sombre);
+            sauvegarder();
+        });
+
+        VBox barreLaterale = new VBox(4, titreApp, boutonAccueil, boutonCours, boutonEmploiDuTemps, boutonParametres,
+                espaceur, caseThemeSombre);
         barreLaterale.setPadding(new Insets(16, 8, 16, 8));
         barreLaterale.setPrefWidth(190);
 
@@ -94,6 +108,10 @@ public class App extends Application {
         stage.setOnCloseRequest(e -> sauvegarder());
         stage.setMaximized(true);
         stage.show();
+    }
+
+    private void appliquerTheme(boolean sombre) {
+        Application.setUserAgentStylesheet(sombre ? new PrimerDark().getUserAgentStylesheet() : new PrimerLight().getUserAgentStylesheet());
     }
 
     private void afficherVue(Node aAfficher, Node... vues) {
