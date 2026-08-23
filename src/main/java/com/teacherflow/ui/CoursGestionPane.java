@@ -1,5 +1,6 @@
 package com.teacherflow.ui;
 
+import com.teacherflow.io.OuvreurFichiers;
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.DossierReference;
 import com.teacherflow.model.EmploiDuTemps;
@@ -508,7 +509,7 @@ public class CoursGestionPane extends BorderPane {
             return;
         }
         String url = resultat.get().trim();
-        if (!url.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.+")) {
+        if (!OuvreurFichiers.estUrl(url)) {
             Alert erreur = new Alert(Alert.AlertType.ERROR,
                     "L'URL doit commencer par un schéma (ex. https://).");
             erreur.setTitle("URL invalide");
