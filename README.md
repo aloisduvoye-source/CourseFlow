@@ -177,7 +177,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - [x] Script d'installation ([bin/lecture](bin/lecture)) appelant le point d'entrée CLI via `mvn javafx:run -Djavafx.mainClass=...`
 
 ### Phase 6 — Confort & robustesse (en cours)
-- [ ] Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur
+- [x] Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur — [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java) détecte un chemin local manquant avant de tenter l'ouverture (la commande native comme `xdg-open` échoue silencieusement de notre point de vue sinon) et renvoie un message par fichier (libellé + raison)
 - [ ] Annuler/rétablir (Ctrl+Z) sur l'emploi du temps, pour rattraper un créneau déplacé ou supprimé par erreur
 - [ ] Édition rapide (glisser-déposer de fichiers, réorganisation, duplication de créneau/semaine)
 - [x] Recherche/filtre dans la liste des cours et fichiers — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : champ de recherche par nom (cours et fichiers), la recherche fichiers matche aussi les tags
