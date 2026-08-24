@@ -9,7 +9,10 @@ import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.persistence.DataStore;
 import com.teacherflow.util.NomsJours;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -25,8 +28,9 @@ import java.util.stream.Collectors;
  * ({@code slot}, {@code slots}, {@code schedule}, {@code courses}, {@code course},
  * {@code open-file}, {@code week}). Sans sous-commande, ouvre les fichiers du créneau ciblé
  * (courant, ou via {@code --next}/{@code --previous}/{@code --day}/{@code --date}+{@code --time}).
- * {@code lecture .} lance l'interface graphique (interceptée par {@code bin/lecture} avant
- * d'atteindre cette classe).
+ * {@code lecture .} lance l'interface graphique : interceptée par {@code bin/lecture} avant
+ * d'atteindre cette classe en mode développement, ou via {@link #lancerInterfaceGraphiqueVoisine()}
+ * pour le binaire natif packagé (jpackage), qui n'a pas de wrapper devant lui.
  */
 public final class Lecture {
 
@@ -34,6 +38,10 @@ public final class Lecture {
     }
 
     public static void main(String[] args) {
+        if (args.length == 1 && args[0].equals(".")) {
+            lancerInterfaceGraphiqueVoisine();
+            return;
+        }
         if (Arrays.asList(args).contains("--help")) {
             afficherAide();
             return;
@@ -69,6 +77,47 @@ public final class Lecture {
             case COURSE -> afficherCours(emploiDuTemps, arguments.getNomCours());
             case OPEN_FILE -> ouvrirFichierCible(emploiDuTemps, arguments);
             case WEEK -> traiterSemaine(dataStore, emploiDuTemps, arguments);
+        }
+    }
+
+    /**
+     * Démarre l'exécutable graphique voisin ({@code teacherflow}), présent dans le même dossier
+     * que le binaire natif {@code lecture} produit par jpackage (les deux lanceurs d'une même
+     * image jpackage vivent toujours côte à côte, voir {@code bin/build-installer}). En mode
+     * développement, {@code bin/lecture} intercepte déjà "." avant d'invoquer Java, donc cette
+     * méthode n'est jamais exercée dans ce mode. Lancé via {@code setsid} pour détacher le
+     * processus graphique de la session courante : sans ça, il peut être arrêté avec le reste du
+     * groupe de processus quand {@code lecture} se termine, avant même d'avoir eu le temps de
+     * s'afficher. Le lanceur natif {@code lecture} tourne avec {@code _JPACKAGE_LAUNCHER} et
+     * {@code LD_LIBRARY_PATH} réglés pour SON PROPRE lanceur ; hérités tels quels par l'enfant,
+     * ils empêchent le lanceur {@code teacherflow} de démarrer correctement (il tente de
+     * réutiliser la configuration de {@code lecture}) — on les retire donc avant de le démarrer.
+     */
+    private static void lancerInterfaceGraphiqueVoisine() {
+        Optional<String> commande = ProcessHandle.current().info().command();
+        if (commande.isEmpty()) {
+            System.err.println("Impossible de localiser l'exécutable graphique voisin.");
+            System.exit(1);
+            return;
+        }
+        Path binaireVoisin = Path.of(commande.get()).resolveSibling("teacherflow");
+        if (!Files.isExecutable(binaireVoisin)) {
+            System.err.println("Exécutable graphique introuvable : " + binaireVoisin
+                    + " (\"lecture .\" n'est disponible que depuis l'application installée via jpackage).");
+            System.exit(1);
+            return;
+        }
+        try {
+            ProcessBuilder constructeur = new ProcessBuilder("setsid", binaireVoisin.toString())
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .redirectInput(ProcessBuilder.Redirect.from(new File("/dev/null")));
+            constructeur.environment().remove("_JPACKAGE_LAUNCHER");
+            constructeur.environment().remove("LD_LIBRARY_PATH");
+            constructeur.start();
+        } catch (IOException e) {
+            System.err.println("Impossible de lancer l'interface graphique : " + e.getMessage());
+            System.exit(1);
         }
     }
 
