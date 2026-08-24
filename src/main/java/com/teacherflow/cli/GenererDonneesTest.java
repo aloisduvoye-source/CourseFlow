@@ -4,6 +4,7 @@ import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.persistence.DataStore;
 
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +24,9 @@ import java.util.UUID;
  * Génère un jeu de données aléatoire (cours, fichiers, créneaux) dans {@code ~/.teacherflow/data.json},
  * pour explorer l'interface sans tout créer manuellement. Les fichiers factices sont créés dans le
  * dossier {@code test/} du projet. Les données existantes sont sauvegardées en {@code .bak} avant
- * d'être remplacées.
+ * d'être remplacées. La date d'ancrage de la semaine A est réglée sur le lundi de la semaine
+ * courante, et une partie des créneaux générés sont réglés sur semaine A ou B (dont quelques
+ * paires au même horaire) pour illustrer l'alternance.
  */
 public final class GenererDonneesTest {
 
@@ -51,6 +55,7 @@ public final class GenererDonneesTest {
         List<Path> fichiersTest = genererFichiersTest(Path.of("test"));
 
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        emploiDuTemps.getParametres().setAncrageSemaineA(LocalDate.now().with(DayOfWeek.MONDAY));
         List<Cours> coursGeneres = genererCours(emploiDuTemps, fichiersTest);
         genererCreneaux(emploiDuTemps, coursGeneres);
 
@@ -101,6 +106,8 @@ public final class GenererDonneesTest {
     private static void genererCreneaux(EmploiDuTemps emploiDuTemps, List<Cours> cours) {
         boolean[][] occupe = new boolean[JOURS_ECOLE.length][24];
 
+        genererPairesAlternees(emploiDuTemps, cours, occupe);
+
         int nombreCreneaux = 18;
         int tentatives = 0;
         int crees = 0;
@@ -116,18 +123,70 @@ public final class GenererDonneesTest {
             Cours coursChoisi = cours.get(ALEA.nextInt(cours.size()));
             Creneau creneau = emploiDuTemps.ajouterCreneau(
                     JOURS_ECOLE[jourIndex], LocalTime.of(heure, 0), LocalTime.of(heure + 1, 0), coursChoisi.getId());
-
-            List<Fichier> fichiersCours = coursChoisi.getFichiers();
-            List<Fichier> melange = new ArrayList<>(fichiersCours);
-            Collections.shuffle(melange, ALEA);
-            int nombreSelectionnes = 1 + ALEA.nextInt(fichiersCours.size());
-            List<UUID> idsSelectionnes = new ArrayList<>();
-            for (int k = 0; k < nombreSelectionnes; k++) {
-                idsSelectionnes.add(melange.get(k).getId());
-            }
-            creneau.setFichiersSelectionnesIds(idsSelectionnes);
+            creneau.setTypeSemaine(typeSemaineAleatoire());
+            selectionnerFichiersAleatoires(creneau, coursChoisi);
             crees++;
         }
+    }
+
+    /**
+     * Crée quelques paires de créneaux au même horaire (un cours en semaine A, un autre en
+     * semaine B) pour illustrer une vraie alternance, plutôt que de compter uniquement sur le
+     * tirage aléatoire de {@link #typeSemaineAleatoire()} qui ne garantit pas ce cas de figure.
+     */
+    private static void genererPairesAlternees(EmploiDuTemps emploiDuTemps, List<Cours> cours, boolean[][] occupe) {
+        int nombrePaires = 3;
+        int tentatives = 0;
+        int crees = 0;
+        while (crees < nombrePaires && tentatives < 100) {
+            tentatives++;
+            int jourIndex = ALEA.nextInt(JOURS_ECOLE.length);
+            int heure = HEURES_DEBUT_POSSIBLES[ALEA.nextInt(HEURES_DEBUT_POSSIBLES.length)];
+            if (occupe[jourIndex][heure]) {
+                continue;
+            }
+            occupe[jourIndex][heure] = true;
+
+            Cours coursA = cours.get(ALEA.nextInt(cours.size()));
+            Cours coursB = cours.get(ALEA.nextInt(cours.size()));
+
+            Creneau creneauA = emploiDuTemps.ajouterCreneau(
+                    JOURS_ECOLE[jourIndex], LocalTime.of(heure, 0), LocalTime.of(heure + 1, 0), coursA.getId());
+            creneauA.setTypeSemaine(TypeSemaine.A);
+            selectionnerFichiersAleatoires(creneauA, coursA);
+
+            Creneau creneauB = emploiDuTemps.ajouterCreneau(
+                    JOURS_ECOLE[jourIndex], LocalTime.of(heure, 0), LocalTime.of(heure + 1, 0), coursB.getId());
+            creneauB.setTypeSemaine(TypeSemaine.B);
+            selectionnerFichiersAleatoires(creneauB, coursB);
+
+            crees++;
+        }
+    }
+
+    private static void selectionnerFichiersAleatoires(Creneau creneau, Cours cours) {
+        List<Fichier> fichiersCours = cours.getFichiers();
+        List<Fichier> melange = new ArrayList<>(fichiersCours);
+        Collections.shuffle(melange, ALEA);
+        int nombreSelectionnes = 1 + ALEA.nextInt(fichiersCours.size());
+        List<UUID> idsSelectionnes = new ArrayList<>();
+        for (int k = 0; k < nombreSelectionnes; k++) {
+            idsSelectionnes.add(melange.get(k).getId());
+        }
+        creneau.setFichiersSelectionnesIds(idsSelectionnes);
+    }
+
+    /**
+     * @return TOUTES la majorité du temps (comportement historique), sinon A ou B à parts
+     * égales — pour que la fonctionnalité de semaines alternées soit visible dans les données
+     * générées sans dominer l'emploi du temps.
+     */
+    private static TypeSemaine typeSemaineAleatoire() {
+        int tirage = ALEA.nextInt(100);
+        if (tirage < 60) {
+            return TypeSemaine.TOUTES;
+        }
+        return tirage < 80 ? TypeSemaine.A : TypeSemaine.B;
     }
 
     private static String couleurAleatoire() {
