@@ -95,4 +95,22 @@ class ParametresTest {
         assertEquals(TypeSemaine.B, parametres.semainePour(LocalDate.of(2026, 9, 14)));
         assertEquals(TypeSemaine.A, parametres.semainePour(LocalDate.of(2026, 9, 7)));
     }
+
+    @Test
+    void couleurTagRetourneUneCouleurParDefautDeterministeSansPersonnalisation() {
+        Parametres parametres = new Parametres();
+
+        String couleur = parametres.couleurTag("dm");
+
+        assertEquals(couleur, parametres.couleurTag("dm"));
+    }
+
+    @Test
+    void couleurTagUtiliseLaCouleurPersonnaliseeQuandElleExiste() {
+        Parametres parametres = new Parametres();
+
+        parametres.getCouleursTags().put("dm", "#123456");
+
+        assertEquals("#123456", parametres.couleurTag("dm"));
+    }
 }

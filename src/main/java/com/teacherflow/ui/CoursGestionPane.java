@@ -32,6 +32,7 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -43,7 +44,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -55,10 +55,6 @@ import java.util.UUID;
 public class CoursGestionPane extends BorderPane {
 
     private static final String COULEUR_PAR_DEFAUT = "#3498db";
-    private static final String[] PALETTE_TAGS = {
-            "#5DADE2", "#48C9B0", "#F4D03F", "#EB984E", "#EC7063",
-            "#AF7AC5", "#5499C7", "#52BE80", "#F39C12", "#CD6155"
-    };
 
     private final EmploiDuTemps emploiDuTemps;
     private final Runnable surChangement;
@@ -670,12 +666,13 @@ public class CoursGestionPane extends BorderPane {
             });
 
             ligne.prefWidthProperty().bind(listeFichiers.widthProperty().subtract(24));
-            libelle.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(libelle, Priority.ALWAYS);
             conteneurTags.setAlignment(Pos.CENTER_LEFT);
 
+            Region espaceur = new Region();
+            HBox.setHgrow(espaceur, Priority.ALWAYS);
+
             ligne.setAlignment(Pos.CENTER_LEFT);
-            ligne.getChildren().addAll(libelle, conteneurTags, boutonTags, boutonSupprimer);
+            ligne.getChildren().addAll(libelle, conteneurTags, espaceur, boutonTags, boutonSupprimer);
         }
 
         @Override
@@ -700,16 +697,11 @@ public class CoursGestionPane extends BorderPane {
         }
     }
 
-    private static Label pastilleTag(String tag) {
+    private Label pastilleTag(String tag) {
         Label pastille = new Label(tag);
-        pastille.setStyle("-fx-background-color: " + couleurTag(tag) + "; -fx-background-radius: 8; "
-                + "-fx-padding: 1 8 1 8; -fx-text-fill: white; -fx-font-size: 10;");
+        pastille.setStyle("-fx-background-color: " + emploiDuTemps.getParametres().couleurTag(tag)
+                + "; -fx-background-radius: 8; -fx-padding: 1 8 1 8; -fx-text-fill: white; -fx-font-size: 10;");
         return pastille;
-    }
-
-    private static String couleurTag(String tag) {
-        int index = Math.abs(tag.toLowerCase(Locale.ROOT).hashCode()) % PALETTE_TAGS.length;
-        return PALETTE_TAGS[index];
     }
 
     private void modifierTags(Fichier fichier) {
@@ -718,17 +710,7 @@ public class CoursGestionPane extends BorderPane {
 
         ListView<String> listeTags = new ListView<>();
         listeTags.setPrefHeight(140);
-        listeTags.setCellFactory(CheckBoxListCell.forListView(tag -> {
-            SimpleBooleanProperty propriete = new SimpleBooleanProperty(tagsCoches.contains(tag));
-            propriete.addListener((obs, etaitCoche, estCoche) -> {
-                if (estCoche) {
-                    tagsCoches.add(tag);
-                } else {
-                    tagsCoches.remove(tag);
-                }
-            });
-            return propriete;
-        }));
+        listeTags.setCellFactory(vue -> new TagCell(tagsCoches));
         listeTags.getItems().setAll(parametres.getTagsDisponibles());
 
         TextField champNouveauTag = new TextField();
@@ -761,5 +743,63 @@ public class CoursGestionPane extends BorderPane {
         fichier.setTags(new ArrayList<>(tagsCoches));
         listeFichiers.refresh();
         notifierChangement();
+    }
+
+    /**
+     * Ligne du vocabulaire de tags : case à cocher (utiliser ce tag pour le fichier en cours
+     * d'édition) + pastille de couleur cliquable (personnalise la couleur du tag, appliquée
+     * immédiatement) + nom du tag.
+     */
+    private class TagCell extends ListCell<String> {
+        private final CheckBox caseCoche = new CheckBox();
+        private final ColorPicker selecteurCouleur = new ColorPicker();
+        private final Label libelle = new Label();
+        private final HBox ligne = new HBox(8, caseCoche, selecteurCouleur, libelle);
+        private final Set<String> tagsCoches;
+
+        TagCell(Set<String> tagsCoches) {
+            this.tagsCoches = tagsCoches;
+            selecteurCouleur.getStyleClass().add(ColorPicker.STYLE_CLASS_BUTTON);
+            selecteurCouleur.setPrefWidth(34);
+            ligne.setAlignment(Pos.CENTER_LEFT);
+
+            caseCoche.setOnAction(e -> {
+                String tag = getItem();
+                if (tag == null) {
+                    return;
+                }
+                if (caseCoche.isSelected()) {
+                    this.tagsCoches.add(tag);
+                } else {
+                    this.tagsCoches.remove(tag);
+                }
+            });
+            selecteurCouleur.setOnAction(e -> {
+                String tag = getItem();
+                if (tag == null) {
+                    return;
+                }
+                Color couleur = selecteurCouleur.getValue();
+                emploiDuTemps.getParametres().getCouleursTags().put(tag, String.format("#%02X%02X%02X",
+                        (int) Math.round(couleur.getRed() * 255),
+                        (int) Math.round(couleur.getGreen() * 255),
+                        (int) Math.round(couleur.getBlue() * 255)));
+                listeFichiers.refresh();
+                notifierChangement();
+            });
+        }
+
+        @Override
+        protected void updateItem(String tag, boolean vide) {
+            super.updateItem(tag, vide);
+            if (vide || tag == null) {
+                setGraphic(null);
+                return;
+            }
+            libelle.setText(tag);
+            caseCoche.setSelected(tagsCoches.contains(tag));
+            selecteurCouleur.setValue(Color.web(emploiDuTemps.getParametres().couleurTag(tag)));
+            setGraphic(ligne);
+        }
     }
 }
