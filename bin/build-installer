@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Construit un paquet natif installable de TeacherFlow (jpackage), avec deux points d'entrée
+# dans la même image : "teacherflow" (interface graphique) et "lecture" (CLI, équivalent packagé
+# de bin/lecture). Produit dans target/dist/ :
+#   - un app-image portable (teacherflow/), utilisable sans installation ;
+#   - un paquet .deb installable via dpkg.
+# Usage : bin/build-installer
+
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJET_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+cd "$PROJET_DIR" || exit 1
+
+if ! command -v jpackage >/dev/null || ! command -v jlink >/dev/null; then
+    echo "jpackage/jlink introuvables : un JDK complet (pas juste un JRE) est nécessaire." >&2
+    exit 1
+fi
+
+JAVA_HOME="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")}"
+if [ ! -d "$JAVA_HOME/jmods" ]; then
+    echo "JAVA_HOME ($JAVA_HOME) ne contient pas de dossier jmods : un JDK complet est nécessaire." >&2
+    exit 1
+fi
+
+echo "==> Compilation et tests"
+mvn -q clean test
+
+echo "==> Copie des dépendances runtime (JavaFX, AtlantaFX, Jackson)"
+rm -rf target/modules
+mvn -q dependency:copy-dependencies -DoutputDirectory=target/modules -DincludeScope=runtime
+
+echo "==> Construction de l'image d'exécution (jlink)"
+rm -rf target/runtime
+jlink \
+    --module-path "target/classes:target/modules:$JAVA_HOME/jmods" \
+    --add-modules com.teacherflow.app \
+    --output target/runtime \
+    --strip-debug \
+    --no-header-files \
+    --no-man-pages
+
+VERSION="1.0.0"
+DESCRIPTION="Organise les fichiers de cours autour de l'emploi du temps"
+
+echo "==> Construction de l'app-image (jpackage)"
+rm -rf target/dist
+jpackage \
+    --type app-image \
+    --runtime-image target/runtime \
+    --name teacherflow \
+    --app-version "$VERSION" \
+    --vendor TeacherFlow \
+    --description "$DESCRIPTION" \
+    --module com.teacherflow.app/com.teacherflow.app.App \
+    --add-launcher lecture=packaging/lecture-launcher.properties \
+    --dest target/dist
+
+echo "==> Construction du paquet .deb (jpackage)"
+jpackage \
+    --type deb \
+    --runtime-image target/runtime \
+    --name teacherflow \
+    --app-version "$VERSION" \
+    --vendor TeacherFlow \
+    --description "$DESCRIPTION" \
+    --module com.teacherflow.app/com.teacherflow.app.App \
+    --add-launcher lecture=packaging/lecture-launcher.properties \
+    --linux-shortcut \
+    --linux-app-category Education \
+    --dest target/dist
+
+echo "==> Terminé. Contenu de target/dist :"
+ls target/dist
