@@ -1,6 +1,7 @@
 package com.teacherflow.model;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,11 +52,14 @@ public class EmploiDuTemps {
     }
 
     /**
-     * Trouve le créneau correspondant à un jour et une heure donnés (ex. l'instant présent).
+     * Trouve le créneau correspondant à une date et une heure données (ex. l'instant présent),
+     * en tenant compte de la semaine (A/B/toutes) à laquelle appartient chaque créneau.
      */
-    public Optional<Creneau> trouverCreneauCourant(DayOfWeek jour, LocalTime heure) {
+    public Optional<Creneau> trouverCreneauCourant(LocalDate date, LocalTime heure) {
+        DayOfWeek jour = date.getDayOfWeek();
+        TypeSemaine semaine = parametres.semainePour(date);
         return creneaux.stream()
-                .filter(c -> c.getJour() == jour && c.contient(heure))
+                .filter(c -> c.getJour() == jour && c.contient(heure) && c.correspondA(semaine))
                 .findFirst();
     }
 

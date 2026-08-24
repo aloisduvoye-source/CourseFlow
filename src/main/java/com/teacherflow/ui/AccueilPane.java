@@ -6,6 +6,7 @@ import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.util.NomsJours;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
@@ -32,6 +33,7 @@ public class AccueilPane extends BorderPane {
     private final EmploiDuTemps emploiDuTemps;
     private final Label titre = new Label();
     private final Label libelleCours = new Label();
+    private final Label libelleSemaine = new Label();
     private final Label libelleSalle = new Label();
     private final Label libelleDescription = new Label();
     private final VBox listeFichiers = new VBox(4);
@@ -48,6 +50,7 @@ public class AccueilPane extends BorderPane {
 
         titre.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
         libelleCours.setStyle("-fx-font-size: 15;");
+        libelleSemaine.setStyle("-fx-text-fill: -color-fg-muted;");
 
         boutonOuvrir.setOnAction(e -> ouvrirFichiersDuCreneauAffiche());
 
@@ -58,7 +61,7 @@ public class AccueilPane extends BorderPane {
         HBox boutonsNavigation = new HBox(8, boutonPrecedent, boutonSuivant);
 
         VBox contenu = new VBox(12,
-                titre, libelleCours, libelleSalle, libelleDescription,
+                titre, libelleCours, libelleSemaine, libelleSalle, libelleDescription,
                 titreSection("Fichiers"), listeFichiers, boutonOuvrir,
                 boutonsNavigation);
         setCenter(contenu);
@@ -77,9 +80,10 @@ public class AccueilPane extends BorderPane {
      * Appelé à la construction et à chaque affichage de l'onglet.
      */
     public void rafraichir() {
-        jourReference = LocalDate.now().getDayOfWeek();
+        LocalDate dateReference = LocalDate.now();
+        jourReference = dateReference.getDayOfWeek();
         heureReference = LocalTime.now();
-        afficherCreneau(emploiDuTemps.trouverCreneauCourant(jourReference, heureReference).orElse(null));
+        afficherCreneau(emploiDuTemps.trouverCreneauCourant(dateReference, heureReference).orElse(null));
     }
 
     private void naviguer(boolean suivant) {
@@ -104,6 +108,7 @@ public class AccueilPane extends BorderPane {
         if (!present) {
             titre.setText("Aucun créneau en ce moment");
             libelleCours.setText("");
+            libelleSemaine.setText("");
             libelleSalle.setText("");
             libelleDescription.setText("");
             listeFichiers.getChildren().clear();
@@ -114,6 +119,9 @@ public class AccueilPane extends BorderPane {
 
         Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
         libelleCours.setText(cours != null ? cours.getNom() : "(cours supprimé)");
+
+        libelleSemaine.setText(creneau.getTypeSemaine() != TypeSemaine.TOUTES
+                ? "Semaine " + creneau.getTypeSemaine() : "");
 
         libelleSalle.setText(creneau.getSalle() != null && !creneau.getSalle().isBlank()
                 ? "Salle : " + creneau.getSalle() : "");

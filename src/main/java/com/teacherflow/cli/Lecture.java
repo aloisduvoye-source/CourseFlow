@@ -5,6 +5,7 @@ import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.persistence.DataStore;
 import com.teacherflow.util.NomsJours;
 
@@ -40,7 +41,7 @@ public final class Lecture {
 
         ArgumentsLecture arguments;
         try {
-            arguments = ArgumentsLecture.analyser(args, LocalDate.now().getDayOfWeek(), LocalTime.now());
+            arguments = ArgumentsLecture.analyser(args, LocalDate.now(), LocalTime.now());
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
             System.err.println("Usage : lecture [COMMAND] [OPTIONS] (voir lecture --help)");
@@ -62,8 +63,8 @@ public final class Lecture {
         switch (arguments.getCommande()) {
             case OUVRIR -> traiterOuverture(emploiDuTemps, arguments);
             case SLOT -> traiterSlot(emploiDuTemps, arguments);
-            case SLOTS -> listerCreneauxDuJour(emploiDuTemps, arguments.getJour());
-            case SCHEDULE -> System.out.print(GrilleAscii.construire(emploiDuTemps, LocalDate.now().getDayOfWeek()));
+            case SLOTS -> listerCreneauxDuJour(emploiDuTemps, arguments.getDate());
+            case SCHEDULE -> System.out.print(GrilleAscii.construire(emploiDuTemps, LocalDate.now()));
             case COURSES -> listerCours(emploiDuTemps, arguments.isMissingInfo());
             case COURSE -> afficherCours(emploiDuTemps, arguments.getNomCours());
             case OPEN_FILE -> ouvrirFichierCible(emploiDuTemps, arguments);
@@ -156,7 +157,7 @@ public final class Lecture {
      */
     private static Optional<Creneau> resoudreCreneauCible(EmploiDuTemps emploiDuTemps, ArgumentsLecture arguments) {
         if (!arguments.isSuivant() && !arguments.isPrecedent()) {
-            return emploiDuTemps.trouverCreneauCourant(arguments.getJour(), arguments.getHeure());
+            return emploiDuTemps.trouverCreneauCourant(arguments.getDate(), arguments.getHeure());
         }
 
         Optional<Creneau> creneauOpt = arguments.isSuivant()
@@ -194,9 +195,11 @@ public final class Lecture {
         }
     }
 
-    private static void listerCreneauxDuJour(EmploiDuTemps emploiDuTemps, DayOfWeek jour) {
+    private static void listerCreneauxDuJour(EmploiDuTemps emploiDuTemps, LocalDate date) {
+        DayOfWeek jour = date.getDayOfWeek();
+        TypeSemaine semaine = emploiDuTemps.getParametres().semainePour(date);
         List<Creneau> creneaux = emploiDuTemps.getCreneaux().stream()
-                .filter(c -> c.getJour() == jour)
+                .filter(c -> c.getJour() == jour && c.correspondA(semaine))
                 .sorted(Comparator.comparing(Creneau::getHeureDebut))
                 .collect(Collectors.toList());
 
@@ -295,7 +298,7 @@ public final class Lecture {
             fichiersDisponibles = coursOpt.get().getFichiers();
             contexte = "le cours \"" + coursOpt.get().getNom() + "\"";
         } else {
-            Optional<Creneau> creneauOpt = emploiDuTemps.trouverCreneauCourant(arguments.getJour(), arguments.getHeure());
+            Optional<Creneau> creneauOpt = emploiDuTemps.trouverCreneauCourant(arguments.getDate(), arguments.getHeure());
             if (creneauOpt.isEmpty()) {
                 System.out.println("Aucun créneau prévu " + NomsJours.nom(arguments.getJour())
                         + " à " + formatHeure(arguments.getHeure()) + ".");

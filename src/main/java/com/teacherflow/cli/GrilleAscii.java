@@ -4,9 +4,11 @@ import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.util.NomsJours;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -33,14 +35,20 @@ public final class GrilleAscii {
     }
 
     /**
-     * @param aujourdhui le jour à marquer d'un astérisque dans l'en-tête (typiquement le jour système).
+     * @param aujourdhui la date à marquer d'un astérisque dans l'en-tête (typiquement la date
+     *                    système), qui détermine aussi la semaine (A/B) affichée : seuls les
+     *                    créneaux de cette semaine (ou réglés sur "toutes les semaines") sont
+     *                    inclus, ces derniers étant repérés par un suffixe "(A)"/"(B)".
      */
-    public static String construire(EmploiDuTemps emploiDuTemps, DayOfWeek aujourdhui) {
+    public static String construire(EmploiDuTemps emploiDuTemps, LocalDate aujourdhui) {
+        DayOfWeek jourAujourdhui = aujourdhui.getDayOfWeek();
+        TypeSemaine semaine = emploiDuTemps.getParametres().semainePour(aujourdhui);
+
         Map<DayOfWeek, List<Creneau>> parJour = new EnumMap<>(DayOfWeek.class);
         int maxCreneaux = 0;
         for (DayOfWeek jour : JOURS) {
             List<Creneau> creneaux = emploiDuTemps.getCreneaux().stream()
-                    .filter(c -> c.getJour() == jour)
+                    .filter(c -> c.getJour() == jour && c.correspondA(semaine))
                     .sorted(Comparator.comparing(Creneau::getHeureDebut))
                     .toList();
             parJour.put(jour, creneaux);
@@ -49,7 +57,7 @@ public final class GrilleAscii {
 
         StringBuilder texte = new StringBuilder();
         texte.append(bordure('┌', '┬', '┐')).append('\n');
-        texte.append(ligneEnTetes(aujourdhui)).append('\n');
+        texte.append(ligneEnTetes(jourAujourdhui)).append('\n');
         texte.append(bordure('├', '┼', '┤')).append('\n');
 
         if (maxCreneaux == 0) {
@@ -90,7 +98,10 @@ public final class GrilleAscii {
      */
     private static List<String> construireBlocCreneau(EmploiDuTemps emploiDuTemps, Creneau creneau) {
         List<String> lignes = new ArrayList<>();
-        lignes.add(String.format("%-" + LARGEUR_COLONNE + "s", creneau.getHeureDebut() + " - " + creneau.getHeureFin()));
+        String suffixeSemaine = creneau.getTypeSemaine() != TypeSemaine.TOUTES
+                ? " (" + creneau.getTypeSemaine() + ")" : "";
+        lignes.add(String.format("%-" + LARGEUR_COLONNE + "s",
+                creneau.getHeureDebut() + " - " + creneau.getHeureFin() + suffixeSemaine));
         lignes.add("┌" + "─".repeat(LARGEUR_BOITE + 2) + "┐");
 
         Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);

@@ -3,6 +3,7 @@ package com.teacherflow.model;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -39,12 +40,33 @@ class EmploiDuTempsTest {
         Creneau creneau = emploiDuTemps.ajouterCreneau(
                 DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(11, 0), histoire.getId());
 
-        assertTrue(emploiDuTemps.trouverCreneauCourant(DayOfWeek.TUESDAY, LocalTime.of(10, 30))
+        LocalDate unMardi = LocalDate.of(2026, 8, 25);
+        LocalDate unMercredi = LocalDate.of(2026, 8, 26);
+
+        assertTrue(emploiDuTemps.trouverCreneauCourant(unMardi, LocalTime.of(10, 30))
                 .filter(c -> c.getId().equals(creneau.getId()))
                 .isPresent());
 
-        assertTrue(emploiDuTemps.trouverCreneauCourant(DayOfWeek.TUESDAY, LocalTime.of(11, 0)).isEmpty());
-        assertTrue(emploiDuTemps.trouverCreneauCourant(DayOfWeek.WEDNESDAY, LocalTime.of(10, 30)).isEmpty());
+        assertTrue(emploiDuTemps.trouverCreneauCourant(unMardi, LocalTime.of(11, 0)).isEmpty());
+        assertTrue(emploiDuTemps.trouverCreneauCourant(unMercredi, LocalTime.of(10, 30)).isEmpty());
+    }
+
+    @Test
+    void trouverCreneauCourantRespecteLaSemaineAlterneeDuCreneau() {
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours histoire = emploiDuTemps.ajouterCours("3e B - Histoire", "#e67e22");
+        Creneau creneau = emploiDuTemps.ajouterCreneau(
+                DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(11, 0), histoire.getId());
+        creneau.setTypeSemaine(TypeSemaine.B);
+        emploiDuTemps.getParametres().setAncrageSemaineA(LocalDate.of(2026, 8, 24)); // lundi = semaine A
+
+        LocalDate mardiSemaineA = LocalDate.of(2026, 8, 25);
+        LocalDate mardiSemaineB = LocalDate.of(2026, 9, 1);
+
+        assertTrue(emploiDuTemps.trouverCreneauCourant(mardiSemaineA, LocalTime.of(10, 30)).isEmpty());
+        assertTrue(emploiDuTemps.trouverCreneauCourant(mardiSemaineB, LocalTime.of(10, 30))
+                .filter(c -> c.getId().equals(creneau.getId()))
+                .isPresent());
     }
 
     @Test

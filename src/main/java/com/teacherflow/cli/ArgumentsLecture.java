@@ -20,7 +20,7 @@ public final class ArgumentsLecture {
     public enum Commande { OUVRIR, SLOT, SLOTS, SCHEDULE, COURSES, COURSE, OPEN_FILE }
 
     private final Commande commande;
-    private final DayOfWeek jour;
+    private final LocalDate date;
     private final LocalTime heure;
     private final boolean suivant;
     private final boolean precedent;
@@ -28,10 +28,10 @@ public final class ArgumentsLecture {
     private final String nomCours;
     private final String nomFichier;
 
-    private ArgumentsLecture(Commande commande, DayOfWeek jour, LocalTime heure, boolean suivant,
+    private ArgumentsLecture(Commande commande, LocalDate date, LocalTime heure, boolean suivant,
             boolean precedent, boolean missingInfo, String nomCours, String nomFichier) {
         this.commande = commande;
-        this.jour = jour;
+        this.date = date;
         this.heure = heure;
         this.suivant = suivant;
         this.precedent = precedent;
@@ -45,7 +45,11 @@ public final class ArgumentsLecture {
     }
 
     public DayOfWeek getJour() {
-        return jour;
+        return date.getDayOfWeek();
+    }
+
+    public LocalDate getDate() {
+        return date;
     }
 
     public LocalTime getHeure() {
@@ -72,7 +76,7 @@ public final class ArgumentsLecture {
         return nomFichier;
     }
 
-    public static ArgumentsLecture analyser(String[] args, DayOfWeek jourParDefaut, LocalTime heureParDefaut) {
+    public static ArgumentsLecture analyser(String[] args, LocalDate dateParDefaut, LocalTime heureParDefaut) {
         int index = 0;
         Commande commande = Commande.OUVRIR;
         String nomCours = null;
@@ -98,7 +102,7 @@ public final class ArgumentsLecture {
             }
         }
 
-        DayOfWeek jour = jourParDefaut;
+        LocalDate date = dateParDefaut;
         LocalTime heure = heureParDefaut;
         boolean jourSpecifie = false;
         boolean dateSpecifiee = false;
@@ -122,16 +126,17 @@ public final class ArgumentsLecture {
                 }
                 case "--day" -> {
                     String valeur = valeurSuivante(args, index, option);
-                    jour = NomsJours.depuisNom(valeur).orElseThrow(() -> new IllegalArgumentException(
+                    DayOfWeek jourDemande = NomsJours.depuisNom(valeur).orElseThrow(() -> new IllegalArgumentException(
                             "Jour inconnu : \"" + valeur + "\" (attendu : lundi, mardi, mercredi, jeudi, "
                                     + "vendredi, samedi ou dimanche)."));
+                    date = date.with(jourDemande);
                     jourSpecifie = true;
                     index += 2;
                 }
                 case "--date" -> {
                     String valeur = valeurSuivante(args, index, option);
                     try {
-                        jour = LocalDate.parse(valeur).getDayOfWeek();
+                        date = LocalDate.parse(valeur);
                     } catch (DateTimeParseException e) {
                         throw new IllegalArgumentException(
                                 "Date invalide : \"" + valeur + "\" (format attendu : AAAA-MM-JJ).");
@@ -240,7 +245,7 @@ public final class ArgumentsLecture {
             }
         }
 
-        return new ArgumentsLecture(commande, jour, heure, suivant, precedent, missingInfo, nomCours, nomFichier);
+        return new ArgumentsLecture(commande, date, heure, suivant, precedent, missingInfo, nomCours, nomFichier);
     }
 
     private static void interdireSiPresent(boolean present, String option) {

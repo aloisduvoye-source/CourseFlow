@@ -4,12 +4,15 @@ import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
 import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
+import com.teacherflow.model.TypeSemaine;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GrilleAsciiTest {
@@ -18,7 +21,7 @@ class GrilleAsciiTest {
     void contientLesEnTetesDesSeptJours() {
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("LUNDI"));
         assertTrue(grille.contains("MARDI"));
@@ -33,7 +36,7 @@ class GrilleAsciiTest {
     void marqueLeJourCourantDUnAsterisque() {
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.WEDNESDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 26));
 
         assertTrue(grille.contains("MERCREDI*"));
     }
@@ -44,7 +47,7 @@ class GrilleAsciiTest {
         Cours cours = emploiDuTemps.ajouterCours("6e A", "#3498db");
         emploiDuTemps.ajouterCreneau(DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(10, 0), cours.getId());
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("6E A"));
     }
@@ -55,7 +58,7 @@ class GrilleAsciiTest {
         Cours cours = emploiDuTemps.ajouterCours("6e A", "#3498db");
         emploiDuTemps.ajouterCreneau(DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(10, 0), cours.getId());
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("09:00 - 10:00"));
     }
@@ -68,7 +71,7 @@ class GrilleAsciiTest {
                 DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(10, 0), cours.getId());
         creneau.setSalle("B204");
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("Salle : B204"));
     }
@@ -81,7 +84,7 @@ class GrilleAsciiTest {
                 DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(10, 0), cours.getId());
         creneau.setDescription("Ctrl ch.3");
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("Ctrl ch.3"));
     }
@@ -95,7 +98,7 @@ class GrilleAsciiTest {
                 DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(10, 0), cours.getId());
         creneau.setFichiersSelectionnesIds(List.of(fichier.getId()));
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("TD1.pdf"));
     }
@@ -111,7 +114,7 @@ class GrilleAsciiTest {
                 DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(10, 0), cours.getId());
         creneau.setFichiersSelectionnesIds(List.of(f1.getId(), f2.getId(), f3.getId()));
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("+3 fichiers"));
     }
@@ -123,17 +126,33 @@ class GrilleAsciiTest {
         emploiDuTemps.ajouterCreneau(DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(9, 0), cours.getId());
         emploiDuTemps.ajouterCreneau(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(11, 0), cours.getId());
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.SUNDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 30));
 
         assertTrue(grille.contains("08:00 - 09:00"));
         assertTrue(grille.contains("10:00 - 11:00"));
     }
 
     @Test
+    void omitLesCreneauxDeLAutreSemaineEtSuffixeCeuxAffiches() {
+        EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
+        Cours cours = emploiDuTemps.ajouterCours("6e A", "#3498db");
+        Creneau creneauB = emploiDuTemps.ajouterCreneau(
+                DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(10, 0), cours.getId());
+        creneauB.setTypeSemaine(TypeSemaine.B);
+        emploiDuTemps.getParametres().setAncrageSemaineA(LocalDate.of(2026, 8, 24)); // semaine du 24/08 = A
+
+        String grilleSemaineA = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
+        assertFalse(grilleSemaineA.contains("09:00 - 10:00"));
+
+        String grilleSemaineB = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 31));
+        assertTrue(grilleSemaineB.contains("09:00 - 10:00 (B)"));
+    }
+
+    @Test
     void neCrashePasQuandLEmploiDuTempsEstVide() {
         EmploiDuTemps emploiDuTemps = new EmploiDuTemps();
 
-        String grille = GrilleAscii.construire(emploiDuTemps, DayOfWeek.MONDAY);
+        String grille = GrilleAscii.construire(emploiDuTemps, LocalDate.of(2026, 8, 24));
 
         assertTrue(grille.contains("LUNDI"));
     }
