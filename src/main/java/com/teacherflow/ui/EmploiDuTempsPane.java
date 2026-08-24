@@ -10,6 +10,9 @@ import com.teacherflow.model.PlageHoraire;
 import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.util.NomsJours;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.event.Event;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -573,8 +576,13 @@ public class EmploiDuTempsPane extends BorderPane {
         }
         choixCours.setValue(coursInitial);
 
+        champSalle.setPrefWidth(120);
+
+        ObservableList<Fichier> tousLesFichiersDialogue = FXCollections.observableArrayList();
+        FilteredList<Fichier> fichiersFiltresDialogue = new FilteredList<>(tousLesFichiersDialogue);
+
         ListView<Fichier> listeFichiers = new ListView<>();
-        listeFichiers.setPrefHeight(140);
+        listeFichiers.setPrefHeight(160);
         listeFichiers.setCellFactory(CheckBoxListCell.forListView(fichier -> {
             SimpleBooleanProperty propriete = new SimpleBooleanProperty(fichiersCoches.contains(fichier.getId()));
             propriete.addListener((obs, etaitCoche, estCoche) -> {
@@ -586,7 +594,32 @@ public class EmploiDuTempsPane extends BorderPane {
             });
             return propriete;
         }));
-        listeFichiers.getItems().setAll(emploiDuTemps.fichiersVisibles(coursInitial));
+        listeFichiers.setItems(fichiersFiltresDialogue);
+        tousLesFichiersDialogue.setAll(emploiDuTemps.fichiersVisibles(coursInitial));
+
+        TextField rechercheFichiers = new TextField();
+        rechercheFichiers.setPromptText("Rechercher un fichier...");
+        HBox.setHgrow(rechercheFichiers, Priority.ALWAYS);
+
+        ComboBox<String> filtreTag = new ComboBox<>();
+        filtreTag.getItems().add("Tous les tags");
+        filtreTag.getItems().addAll(emploiDuTemps.getParametres().getTagsDisponibles());
+        filtreTag.setValue("Tous les tags");
+
+        Runnable actualiserFiltreFichiers = () -> fichiersFiltresDialogue.setPredicate(fichier -> {
+            String recherche = rechercheFichiers.getText();
+            boolean correspondRecherche = recherche == null || recherche.isBlank()
+                    || fichier.toString().toLowerCase().contains(recherche.toLowerCase());
+            String tagChoisi = filtreTag.getValue();
+            boolean correspondTag = tagChoisi == null || tagChoisi.equals("Tous les tags")
+                    || fichier.getTags().contains(tagChoisi);
+            return correspondRecherche && correspondTag;
+        });
+        rechercheFichiers.textProperty().addListener((obs, ancien, nouveau) -> actualiserFiltreFichiers.run());
+        filtreTag.setOnAction(e -> actualiserFiltreFichiers.run());
+        actualiserFiltreFichiers.run();
+
+        HBox ligneFiltresFichiers = new HBox(8, rechercheFichiers, filtreTag);
 
         choixCours.setOnAction(e -> {
             Cours coursChoisi = choixCours.getValue();
@@ -594,7 +627,7 @@ public class EmploiDuTempsPane extends BorderPane {
             if (coursChoisi != null) {
                 emploiDuTemps.fichiersVisibles(coursChoisi).forEach(f -> fichiersCoches.add(f.getId()));
             }
-            listeFichiers.getItems().setAll(coursChoisi != null ? emploiDuTemps.fichiersVisibles(coursChoisi) : List.of());
+            tousLesFichiersDialogue.setAll(coursChoisi != null ? emploiDuTemps.fichiersVisibles(coursChoisi) : List.of());
         });
 
         Button boutonToutCocher = new Button("Tout cocher");
@@ -610,16 +643,19 @@ public class EmploiDuTempsPane extends BorderPane {
         });
         HBox boutonsFichiers = new HBox(8, boutonToutCocher, boutonToutDecocher);
 
+        HBox ligneHoraire = new HBox(8, new Label("De"), choixDebut, new Label("À"), choixFin);
+        ligneHoraire.setAlignment(Pos.CENTER_LEFT);
+
         GridPane formulaire = new GridPane();
         formulaire.setHgap(8);
         formulaire.setVgap(8);
         formulaire.addRow(0, new Label("Cours"), choixCours);
-        formulaire.addRow(1, new Label("De"), choixDebut);
-        formulaire.addRow(2, new Label("À"), choixFin);
-        formulaire.addRow(3, new Label("Semaine"), choixSemaine);
-        formulaire.addRow(4, new Label("Salle"), champSalle);
-        formulaire.addRow(5, new Label("Description"), champDescription);
-        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 6, 2, 1);
+        formulaire.add(ligneHoraire, 0, 1, 2, 1);
+        formulaire.addRow(2, new Label("Semaine"), choixSemaine);
+        formulaire.addRow(3, new Label("Salle"), champSalle);
+        formulaire.addRow(4, new Label("Description"), champDescription);
+        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 5, 2, 1);
+        formulaire.add(ligneFiltresFichiers, 0, 6, 2, 1);
         formulaire.add(listeFichiers, 0, 7, 2, 1);
         formulaire.add(boutonsFichiers, 0, 8, 2, 1);
 
@@ -631,7 +667,9 @@ public class EmploiDuTempsPane extends BorderPane {
         Dialog<ButtonType> dialogue = new Dialog<>();
         dialogue.setTitle(creneauExistant == null ? "Nouveau créneau" : "Modifier le créneau");
         dialogue.setHeaderText(NomsJours.nom(jour));
+        dialogue.setResizable(true);
         dialogue.getDialogPane().setContent(formulaire);
+        dialogue.getDialogPane().setPrefWidth(480);
         if (creneauExistant != null) {
             dialogue.getDialogPane().getButtonTypes().addAll(boutonSupprimer, boutonDupliquer);
         }
