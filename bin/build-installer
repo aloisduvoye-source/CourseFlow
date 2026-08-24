@@ -68,6 +68,7 @@ jpackage \
     --add-launcher lecture=packaging/lecture-launcher.properties \
     --linux-shortcut \
     --linux-app-category Education \
+    --resource-dir packaging/deb \
     --dest target/dist
 
 echo "==> Terminé. Contenu de target/dist :"

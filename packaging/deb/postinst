@@ -1,0 +1,47 @@
+#!/bin/sh
+# postinst script for APPLICATION_PACKAGE
+#
+# Override du template jpackage par défaut (voir --resource-dir dans bin/build-installer) :
+# ajoute la création du lien de la commande "lecture" dans /usr/local/bin (déjà dans le PATH par
+# défaut sur Debian/Ubuntu), pour que la commande soit utilisable depuis un terminal juste après
+# "dpkg -i", sans étape manuelle. Les repères tout en majuscules ci-dessous sont remplacés par
+# jpackage lui-même au moment de la génération du paquet (nom du paquet, commandes d'intégration
+# au bureau, etc.) : ne pas les nommer explicitement ailleurs dans ce fichier, jpackage fait un
+# remplacement de texte brut et les substituerait aussi dans les commentaires.
+#
+# see: dh_installdeb(1)
+
+set -e
+
+# summary of how this script can be called:
+#        * <postinst> `configure' <most-recently-configured-version>
+#        * <old-postinst> `abort-upgrade' <new version>
+#        * <conflictor's-postinst> `abort-remove' `in-favour' <package>
+#          <new-version>
+#        * <postinst> `abort-remove'
+#        * <deconfigured's-postinst> `abort-deconfigure' `in-favour'
+#          <failed-install-package> <version> `removing'
+#          <conflicting-package> <version>
+# for details, see https://www.debian.org/doc/debian-policy/ or
+# the debian-policy package
+
+package_type=deb
+LAUNCHER_AS_SERVICE_SCRIPTS
+
+case "$1" in
+    configure)
+DESKTOP_COMMANDS_INSTALL
+LAUNCHER_AS_SERVICE_COMMANDS_INSTALL
+ln -sf /opt/teacherflow/bin/lecture /usr/local/bin/lecture
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+exit 0

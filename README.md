@@ -130,10 +130,15 @@ natifs partageant le même runtime : `teacherflow` (interface graphique) et `lec
 ```
 sudo dpkg -i target/dist/teacherflow_1.0.0_amd64.deb
 ```
-puis relier la commande dans le `PATH` (même principe que l'installation en mode dev, mais vers
-le binaire natif installé) :
+Le paquet `.deb` relie automatiquement la commande dans `/usr/local/bin/lecture` (déjà dans le
+`PATH` par défaut sur Debian/Ubuntu) via un script `postinst` personnalisé
+([packaging/deb/postinst](packaging/deb/postinst), retiré symétriquement par
+[packaging/deb/postrm](packaging/deb/postrm) à la désinstallation) — `lecture` est donc
+utilisable immédiatement après `dpkg -i`, sans étape manuelle. Pour l'app-image portable
+(`target/dist/teacherflow/`, sans passer par `dpkg`), relier la commande manuellement (même
+principe que l'installation en mode dev) :
 ```
-ln -s /opt/teacherflow/bin/lecture ~/.local/bin/lecture
+ln -s "$(pwd)/target/dist/teacherflow/bin/lecture" ~/.local/bin/lecture
 ```
 Nécessite un JDK complet (pas juste un JRE) pour `jpackage`/`jlink` ; `.deb` uniquement pour
 l'instant (pas de `.rpm`, pas de build Windows/macOS — voir la roadmap).
@@ -237,10 +242,12 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
   retirées pour ne pas perturber son démarrage — voir `lancerInterfaceGraphiqueVoisine` dans
   [Lecture.java](src/main/java/com/teacherflow/cli/Lecture.java)). Pas de `.rpm` (`rpmbuild`
   absent de la machine de dev) ni de build Windows/macOS (nécessiterait des machines dédiées).
-- [x] Exposition de la commande `lecture` dans le PATH utilisateur : même principe qu'en mode dev
-  (`ln -s .../bin/lecture ~/.local/bin/lecture`), documenté ci-dessus, mais vers le binaire natif
-  installé plutôt que le script de dev — pas d'automatisation par le paquet `.deb` lui-même pour
-  l'instant (pas de post-install script ajoutant le lien).
+- [x] Exposition de la commande `lecture` dans le PATH : automatique pour le paquet `.deb` via un
+  script `postinst`/`postrm` `jpackage` personnalisé qui relie/retire `/usr/local/bin/lecture`
+  ([packaging/deb/postinst](packaging/deb/postinst), [packaging/deb/postrm](packaging/deb/postrm),
+  activés via `--resource-dir packaging/deb` dans [bin/build-installer](bin/build-installer)) ;
+  pour l'app-image portable (sans `dpkg`), même principe qu'en mode dev mais vers le binaire natif
+  (`ln -s .../teacherflow/bin/lecture ~/.local/bin/lecture`), documenté ci-dessus.
 - [x] Documentation d'installation et de mise à jour — section "Installation packagée" ci-dessus
 
 ## Prochaine étape suggérée
