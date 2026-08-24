@@ -196,7 +196,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 
 ### Phase 7 — Fonctionnalités avancées (optionnel, post-MVP)
 - [x] Gestion de semaines alternées (semaine A / semaine B) : date d'ancrage réglable dans les Paramètres (parité par rapport à cette date), créneaux réglables sur "toutes les semaines" (défaut, comportement historique inchangé), "semaine A" ou "semaine B" ; sélecteur de semaine affichée dans l'emploi du temps, filtrage automatique dans l'Accueil et le CLI (`lecture`, `slot`, `slots`, `schedule`, `open-file`). La navigation précédent/suivant ignore volontairement l'alternance pour l'instant (parcourt jour/heure comme avant)
-- Enregistrement de configurations de semaine nommées, réutilisables (au-delà de la simple alternance A/B)
+- Cycle de N semaines nommées (au-delà de la simple alternance A/B) : généraliserait `TypeSemaine` (A/B/toutes) en une liste de semaines nommées avec parité mod N par rapport à la date d'ancrage, plutôt qu'un simple mod 2 — remplacerait le modèle actuel plutôt que de l'étendre, avec de la nouvelle UI pour nommer/gérer/réordonner les semaines (sélecteur, dialogue de créneau, `lecture week`, `GrilleAscii`)
 - Notifications/rappels avant le début d'un créneau
 - Historique ou statistiques d'usage
 - Synchronisation multi-appareils
