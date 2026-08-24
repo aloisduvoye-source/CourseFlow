@@ -50,6 +50,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -310,14 +311,17 @@ public class EmploiDuTempsPane extends BorderPane {
      * (ex. 9h-10h puis 10h20-11h20), plutôt qu'un unique clic-n'importe-où sur toute la
      * grille : cela limite les points de création possibles à un ensemble prévisible de
      * blocs, identique chaque jour. Le déplacement/redimensionnement d'un créneau existant
-     * (glisser-déposer) n'est pas concerné et reste libre.
+     * (glisser-déposer) n'est pas concerné et reste libre. Un bloc sur deux (par ordre
+     * chronologique) est légèrement plus sombre, pour distinguer deux blocs collés bout à bout.
      */
     private void ajouterCellulesCliquables(Pane pane) {
-        List<PlageHoraire> blocs = emploiDuTemps.getParametres().getBlocs();
+        List<PlageHoraire> blocs = new ArrayList<>(emploiDuTemps.getParametres().getBlocs());
+        blocs.sort(Comparator.comparing(PlageHoraire::getDebut));
         int debutGrille = toMinutes(heureDebutGrille);
         for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
             DayOfWeek jour = joursAffiches[jourIndex];
-            for (PlageHoraire bloc : blocs) {
+            for (int i = 0; i < blocs.size(); i++) {
+                PlageHoraire bloc = blocs.get(i);
                 int minuteDebut = Math.max(0, toMinutes(bloc.getDebut()) - debutGrille);
                 int minuteFin = Math.min(minutesGrille(), toMinutes(bloc.getFin()) - debutGrille);
                 if (minuteFin <= minuteDebut) {
@@ -329,7 +333,9 @@ public class EmploiDuTempsPane extends BorderPane {
                 cellule.setLayoutY(MARGE_VERTICALE + minuteDebut * PIXELS_PAR_MINUTE);
                 cellule.setPrefSize(largeurColonneJour, (minuteFin - minuteDebut) * PIXELS_PAR_MINUTE);
                 cellule.setCursor(Cursor.HAND);
-                cellule.setStyle("-fx-background-color: -color-accent-subtle;");
+                cellule.setStyle(i % 2 == 1
+                        ? "-fx-background-color: derive(-color-accent-subtle, -20%);"
+                        : "-fx-background-color: -color-accent-subtle;");
                 cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, bloc.getDebut(), bloc.getFin()));
                 pane.getChildren().add(cellule);
             }

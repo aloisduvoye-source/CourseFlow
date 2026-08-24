@@ -324,10 +324,11 @@ public class ParametresPane extends BorderPane {
             ligne.setMouseTransparent(true);
             grilleBlocs.getChildren().add(ligne);
         }
-        for (PlageHoraire bloc : new ArrayList<>(parametres.getBlocs())) {
-            if (chevaucheGrille(bloc.getDebut(), bloc.getFin())) {
-                grilleBlocs.getChildren().add(new BlocEditeur(bloc));
-            }
+        List<PlageHoraire> blocsAffiches = new ArrayList<>(parametres.getBlocs());
+        blocsAffiches.removeIf(bloc -> !chevaucheGrille(bloc.getDebut(), bloc.getFin()));
+        blocsAffiches.sort(Comparator.comparing(PlageHoraire::getDebut));
+        for (int i = 0; i < blocsAffiches.size(); i++) {
+            grilleBlocs.getChildren().add(new BlocEditeur(blocsAffiches.get(i), i % 2 == 1));
         }
     }
 
@@ -486,7 +487,12 @@ public class ParametresPane extends BorderPane {
         private boolean enTrainDeBouger;
         private ModeInteraction mode;
 
-        BlocEditeur(PlageHoraire bloc) {
+        /**
+         * @param assombrir légèrement plus sombre que le bloc horaire chronologiquement
+         * suivant/précédent (alterné par rang) : sans ça, deux blocs adjacents (bout à bout)
+         * se fondent en un seul bloc visuel, tous de la même couleur.
+         */
+        BlocEditeur(PlageHoraire bloc, boolean assombrir) {
             this.bloc = bloc;
 
             libelle.setMouseTransparent(true);
@@ -495,7 +501,9 @@ public class ParametresPane extends BorderPane {
             setAlignment(Pos.TOP_LEFT);
             setPadding(new Insets(3, 2, 2, 4));
             setPrefWidth(LARGEUR_BLOC - 4);
-            setStyle("-fx-background-color: -color-accent-emphasis;");
+            setStyle(assombrir
+                    ? "-fx-background-color: derive(-color-accent-emphasis, -18%);"
+                    : "-fx-background-color: -color-accent-emphasis;");
 
             actualiser(toMinutes(bloc.getDebut()), toMinutes(bloc.getFin()));
 

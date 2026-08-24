@@ -16,7 +16,14 @@ PROJET_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 cd "$PROJET_DIR" || exit 1
 
 if [ "$1" = "." ]; then
-    setsid mvn -q -pl app -am javafx:run < /dev/null > /dev/null 2>&1 &
+    # "mvn -pl app javafx:run" échoue ("No plugin found for prefix 'javafx'") : la résolution du
+    # préfixe de plugin regarde le pom.xml du répertoire courant (celui du parent, qui ne déclare
+    # pas javafx-maven-plugin), pas celui du module ciblé par -pl. "-f app/pom.xml" fait tourner
+    # Maven directement dans le contexte du module app, où le plugin est déclaré. Ça nécessite
+    # que "core" soit déjà installé dans le dépôt local (app en dépend comme d'un artefact Maven
+    # normal, pas via le reactor, une fois qu'on sort de -pl/-am).
+    mvn -q -pl core -am install -DskipTests || exit 1
+    setsid mvn -q -f app/pom.xml javafx:run < /dev/null > /dev/null 2>&1 &
     disown
     exit 0
 fi

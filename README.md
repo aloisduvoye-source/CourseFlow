@@ -77,10 +77,16 @@ Techniquement, cette commande fonctionne **sans lancer l'interface graphique** (
 
 ### Lancer l'application
 ```
-mvn -pl app -am javafx:run
+mvn -pl core -am install -DskipTests
+mvn -f app/pom.xml javafx:run
 ```
-(Projet Maven multi-module — voir [Stack technique](#stack-technique) — `-pl app -am` cible le
-module graphique et construit `core` d'abord.)
+(Projet Maven multi-module — voir [Stack technique](#stack-technique). `-f app/pom.xml` est
+nécessaire : `mvn -pl app javafx:run` échoue avec « No plugin found for prefix 'javafx' », la
+résolution du préfixe de plugin regarde le `pom.xml` du répertoire courant — le parent, qui ne
+déclare pas `javafx-maven-plugin` — pas celui du module ciblé par `-pl`. La première commande
+installe `core` dans le dépôt local Maven, nécessaire car `app` en dépend comme d'un artefact
+normal une fois en dehors d'un build de reactor multi-module ; à refaire après une modification de
+`core`.)
 
 ### Lancer les tests
 ```
