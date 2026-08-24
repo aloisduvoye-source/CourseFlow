@@ -712,7 +712,7 @@ public class CoursGestionPane extends BorderPane {
 
         ListView<String> listeTags = new ListView<>();
         listeTags.setPrefHeight(140);
-        listeTags.setCellFactory(vue -> new TagCell(tagsCoches));
+        listeTags.setCellFactory(vue -> new TagCell(tagsCoches, () -> listeTags.getItems().setAll(parametres.getTagsDisponibles())));
         listeTags.getItems().setAll(parametres.getTagsDisponibles());
 
         TextField champNouveauTag = new TextField();
@@ -748,22 +748,44 @@ public class CoursGestionPane extends BorderPane {
     }
 
     /**
+     * Retire un tag du vocabulaire disponible ({@link Parametres#getTagsDisponibles()}), de sa
+     * couleur personnalisée éventuelle, et de tous les fichiers de tous les cours qui
+     * l'utilisaient.
+     */
+    private void supprimerTagDuVocabulaire(String tag) {
+        Parametres parametres = emploiDuTemps.getParametres();
+        parametres.getTagsDisponibles().remove(tag);
+        parametres.getCouleursTags().remove(tag);
+        for (Cours cours : emploiDuTemps.getCours()) {
+            for (Fichier fichierCours : cours.getFichiers()) {
+                fichierCours.getTags().remove(tag);
+            }
+        }
+    }
+
+    /**
      * Ligne du vocabulaire de tags : case à cocher (utiliser ce tag pour le fichier en cours
-     * d'édition) + pastille de couleur cliquable (personnalise la couleur du tag, appliquée
-     * immédiatement) + nom du tag.
+     * d'édition) + nom du tag + pastille de couleur cliquable (personnalise la couleur du tag,
+     * appliquée immédiatement) + suppression du tag (retiré du vocabulaire et de tous les
+     * fichiers qui l'utilisaient).
      */
     private class TagCell extends ListCell<String> {
         private final CheckBox caseCoche = new CheckBox();
         private final ColorPicker selecteurCouleur = new ColorPicker();
         private final Label libelle = new Label();
-        private final HBox ligne = new HBox(8, caseCoche, libelle, selecteurCouleur);
+        private final Button boutonSupprimerTag = new Button();
+        private final HBox ligne = new HBox(8, caseCoche, libelle, selecteurCouleur, boutonSupprimerTag);
         private final Set<String> tagsCoches;
 
-        TagCell(Set<String> tagsCoches) {
+        TagCell(Set<String> tagsCoches, Runnable surSuppressionTag) {
             this.tagsCoches = tagsCoches;
             selecteurCouleur.getStyleClass().add(ColorPicker.STYLE_CLASS_BUTTON);
             selecteurCouleur.setPrefSize(18, 18);
             selecteurCouleur.setMaxSize(18, 18);
+            selecteurCouleur.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; "
+                    + "-fx-padding: 0;");
+            boutonSupprimerTag.setGraphic(Icons.poubelle());
+            boutonSupprimerTag.setAlignment(Pos.CENTER);
             ligne.setAlignment(Pos.CENTER_LEFT);
 
             caseCoche.setOnAction(e -> {
@@ -787,6 +809,17 @@ public class CoursGestionPane extends BorderPane {
                         (int) Math.round(couleur.getRed() * 255),
                         (int) Math.round(couleur.getGreen() * 255),
                         (int) Math.round(couleur.getBlue() * 255)));
+                listeFichiers.refresh();
+                notifierChangement();
+            });
+            boutonSupprimerTag.setOnAction(e -> {
+                String tag = getItem();
+                if (tag == null) {
+                    return;
+                }
+                supprimerTagDuVocabulaire(tag);
+                this.tagsCoches.remove(tag);
+                surSuppressionTag.run();
                 listeFichiers.refresh();
                 notifierChangement();
             });
