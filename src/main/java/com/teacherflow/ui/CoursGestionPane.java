@@ -608,6 +608,7 @@ public class CoursGestionPane extends BorderPane {
             pastille.setStrokeWidth(1.5);
 
             boutonSupprimer.setGraphic(Icons.poubelle());
+            boutonSupprimer.setAlignment(Pos.CENTER);
             boutonSupprimer.setOnAction(e -> {
                 Cours cours = getItem();
                 if (cours != null) {
@@ -653,6 +654,7 @@ public class CoursGestionPane extends BorderPane {
             });
 
             boutonSupprimer.setGraphic(Icons.poubelle());
+            boutonSupprimer.setAlignment(Pos.CENTER);
             boutonSupprimer.setOnAction(e -> {
                 Fichier fichier = getItem();
                 if (fichier == null) {
@@ -754,13 +756,14 @@ public class CoursGestionPane extends BorderPane {
         private final CheckBox caseCoche = new CheckBox();
         private final ColorPicker selecteurCouleur = new ColorPicker();
         private final Label libelle = new Label();
-        private final HBox ligne = new HBox(8, caseCoche, selecteurCouleur, libelle);
+        private final HBox ligne = new HBox(8, caseCoche, libelle, selecteurCouleur);
         private final Set<String> tagsCoches;
 
         TagCell(Set<String> tagsCoches) {
             this.tagsCoches = tagsCoches;
             selecteurCouleur.getStyleClass().add(ColorPicker.STYLE_CLASS_BUTTON);
-            selecteurCouleur.setPrefWidth(34);
+            selecteurCouleur.setPrefSize(18, 18);
+            selecteurCouleur.setMaxSize(18, 18);
             ligne.setAlignment(Pos.CENTER_LEFT);
 
             caseCoche.setOnAction(e -> {
