@@ -7,6 +7,7 @@ import com.teacherflow.model.EmploiDuTemps;
 import com.teacherflow.model.Fichier;
 import com.teacherflow.model.Parametres;
 import com.teacherflow.model.PlageHoraire;
+import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.util.NomsJours;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.event.Event;
@@ -24,6 +25,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -36,6 +39,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -86,10 +90,12 @@ public class EmploiDuTempsPane extends BorderPane {
     private LocalTime heureFinGrille = LocalTime.of(20, 0);
     private final Deque<List<Creneau>> pileAnnuler = new ArrayDeque<>();
     private final Deque<List<Creneau>> pileRetablir = new ArrayDeque<>();
+    private TypeSemaine semaineAffichee;
 
     public EmploiDuTempsPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
         this.surChangement = surChangement;
+        this.semaineAffichee = emploiDuTemps.getParametres().semainePour(LocalDate.now());
 
         setPadding(new Insets(16));
         setFocusTraversable(true);
@@ -100,9 +106,24 @@ public class EmploiDuTempsPane extends BorderPane {
         defilement.viewportBoundsProperty().addListener((obs, ancien, nouveau) -> rafraichir());
 
         VBox.setVgrow(defilement, Priority.ALWAYS);
-        setCenter(new VBox(ligneEntetes, defilement));
+        setCenter(new VBox(construireSelecteurSemaine(), ligneEntetes, defilement));
 
         rafraichir();
+    }
+
+    private HBox construireSelecteurSemaine() {
+        ToggleGroup groupe = new ToggleGroup();
+        ToggleButton boutonA = new ToggleButton("Semaine A");
+        ToggleButton boutonB = new ToggleButton("Semaine B");
+        boutonA.setToggleGroup(groupe);
+        boutonB.setToggleGroup(groupe);
+        boutonA.setSelected(semaineAffichee == TypeSemaine.A);
+        boutonB.setSelected(semaineAffichee == TypeSemaine.B);
+        boutonA.setOnAction(e -> { semaineAffichee = TypeSemaine.A; rafraichir(); });
+        boutonB.setOnAction(e -> { semaineAffichee = TypeSemaine.B; rafraichir(); });
+        HBox ligne = new HBox(8, boutonA, boutonB);
+        ligne.setPadding(new Insets(0, 0, 8, 0));
+        return ligne;
     }
 
     private void gererRaccourciClavier(KeyEvent e) {
@@ -157,6 +178,7 @@ public class EmploiDuTempsPane extends BorderPane {
         copie.setSalle(original.getSalle());
         copie.setDescription(original.getDescription());
         copie.setFichiersSelectionnesIds(new ArrayList<>(original.getFichiersSelectionnesIds()));
+        copie.setTypeSemaine(original.getTypeSemaine());
         return copie;
     }
 
@@ -274,6 +296,7 @@ public class EmploiDuTempsPane extends BorderPane {
         emploiDuTemps.getCreneaux().stream()
                 .filter(c -> indexDuJour(c.getJour()) >= 0)
                 .filter(c -> chevaucheGrille(c.getHeureDebut(), c.getHeureFin()))
+                .filter(c -> c.correspondA(semaineAffichee))
                 .forEach(c -> pane.getChildren().add(new BlocCreneau(c)));
 
         return pane;
@@ -396,6 +419,9 @@ public class EmploiDuTempsPane extends BorderPane {
                 texte.append(" · ").append(creneau.getSalle());
             }
             texte.append('\n').append(minutesVersHeure(debutMinutes)).append(" - ").append(minutesVersHeure(finMinutes));
+            if (creneau.getTypeSemaine() != TypeSemaine.TOUTES) {
+                texte.append(" (").append(creneau.getTypeSemaine()).append(')');
+            }
             if (creneau.getDescription() != null && !creneau.getDescription().isBlank()) {
                 texte.append('\n').append(creneau.getDescription());
             }
@@ -510,6 +536,25 @@ public class EmploiDuTempsPane extends BorderPane {
         TextField champDescription = new TextField();
         champDescription.setPromptText("Description (optionnel)");
 
+        ComboBox<TypeSemaine> choixSemaine = new ComboBox<>();
+        choixSemaine.getItems().addAll(TypeSemaine.TOUTES, TypeSemaine.A, TypeSemaine.B);
+        choixSemaine.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(TypeSemaine typeSemaine) {
+                return switch (typeSemaine) {
+                    case TOUTES -> "Toutes les semaines";
+                    case A -> "Semaine A";
+                    case B -> "Semaine B";
+                };
+            }
+
+            @Override
+            public TypeSemaine fromString(String texte) {
+                return null;
+            }
+        });
+        choixSemaine.setValue(creneauExistant != null ? creneauExistant.getTypeSemaine() : TypeSemaine.TOUTES);
+
         Set<UUID> fichiersCoches = new LinkedHashSet<>();
         Cours coursInitial;
         if (creneauExistant != null) {
@@ -571,11 +616,12 @@ public class EmploiDuTempsPane extends BorderPane {
         formulaire.addRow(0, new Label("Cours"), choixCours);
         formulaire.addRow(1, new Label("De"), choixDebut);
         formulaire.addRow(2, new Label("À"), choixFin);
-        formulaire.addRow(3, new Label("Salle"), champSalle);
-        formulaire.addRow(4, new Label("Description"), champDescription);
-        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 5, 2, 1);
-        formulaire.add(listeFichiers, 0, 6, 2, 1);
-        formulaire.add(boutonsFichiers, 0, 7, 2, 1);
+        formulaire.addRow(3, new Label("Semaine"), choixSemaine);
+        formulaire.addRow(4, new Label("Salle"), champSalle);
+        formulaire.addRow(5, new Label("Description"), champDescription);
+        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 6, 2, 1);
+        formulaire.add(listeFichiers, 0, 7, 2, 1);
+        formulaire.add(boutonsFichiers, 0, 8, 2, 1);
 
         ButtonType boutonValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
         ButtonType boutonSupprimer = new ButtonType("Supprimer", ButtonBar.ButtonData.LEFT);
@@ -635,6 +681,7 @@ public class EmploiDuTempsPane extends BorderPane {
         creneau.setFichiersSelectionnesIds(idsSelectionnes);
         creneau.setSalle(videVersNull(champSalle.getText()));
         creneau.setDescription(videVersNull(champDescription.getText()));
+        creneau.setTypeSemaine(choixSemaine.getValue());
 
         notifierChangement();
         rafraichir();
