@@ -2,8 +2,10 @@
 # postrm script for APPLICATION_PACKAGE
 #
 # Override du template jpackage par défaut : retire le lien de la commande "lecture" créé par
-# postinst dans /usr/local/bin. Seulement sur suppression complète (remove/purge), pas sur
-# upgrade : le postinst du nouveau paquet recréera le lien juste après.
+# postinst dans /usr/local/bin (vers /opt/teacherflow/bin/lecture-fast, lui-même supprimé avec
+# le reste de /opt/teacherflow par dpkg, pas besoin de le retirer ici). Seulement sur suppression
+# complète (remove/purge), pas sur upgrade : le postinst du nouveau paquet recréera le lien juste
+# après.
 #
 # see: dh_installdeb(1)
 

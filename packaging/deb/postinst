@@ -4,10 +4,15 @@
 # Override du template jpackage par défaut (voir --resource-dir dans bin/build-installer) :
 # ajoute la création du lien de la commande "lecture" dans /usr/local/bin (déjà dans le PATH par
 # défaut sur Debian/Ubuntu), pour que la commande soit utilisable depuis un terminal juste après
-# "dpkg -i", sans étape manuelle. Les repères tout en majuscules ci-dessous sont remplacés par
-# jpackage lui-même au moment de la génération du paquet (nom du paquet, commandes d'intégration
-# au bureau, etc.) : ne pas les nommer explicitement ailleurs dans ce fichier, jpackage fait un
-# remplacement de texte brut et les substituerait aussi dans les commentaires.
+# "dpkg -i", sans étape manuelle. Le lien pointe vers "lecture-fast" (généré ci-dessous) plutôt
+# que directement vers le lanceur natif jpackage "/opt/teacherflow/bin/lecture" : ce dernier
+# interroge rpm/dpkg à chaque démarrage pour s'auto-identifier (~1 à 1,3 s perdues à chaque
+# lancement, mesuré au strace), utile pour l'intégration bureau de "teacherflow" mais inutile
+# pour une commande CLI. "lecture-fast" appelle directement le runtime Java packagé, sans ce
+# détour. Les repères tout en majuscules ci-dessous sont remplacés par jpackage lui-même au
+# moment de la génération du paquet (nom du paquet, commandes d'intégration au bureau, etc.) :
+# ne pas les nommer explicitement ailleurs dans ce fichier, jpackage fait un remplacement de
+# texte brut et les substituerait aussi dans les commentaires.
 #
 # see: dh_installdeb(1)
 
@@ -32,7 +37,14 @@ case "$1" in
     configure)
 DESKTOP_COMMANDS_INSTALL
 LAUNCHER_AS_SERVICE_COMMANDS_INSTALL
-ln -sf /opt/teacherflow/bin/lecture /usr/local/bin/lecture
+cat > /opt/teacherflow/bin/lecture-fast << 'SCRIPT_LECTURE_FAST'
+#!/bin/sh
+exec /opt/teacherflow/lib/runtime/bin/java \
+    -Dteacherflow.bindir=/opt/teacherflow/bin \
+    -m com.teacherflow.core/com.teacherflow.cli.Lecture "$@"
+SCRIPT_LECTURE_FAST
+chmod 755 /opt/teacherflow/bin/lecture-fast
+ln -sf /opt/teacherflow/bin/lecture-fast /usr/local/bin/lecture
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

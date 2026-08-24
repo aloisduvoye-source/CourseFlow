@@ -30,7 +30,10 @@ import java.util.stream.Collectors;
  * (courant, ou via {@code --next}/{@code --previous}/{@code --day}/{@code --date}+{@code --time}).
  * {@code lecture .} lance l'interface graphique : interceptée par {@code bin/lecture} avant
  * d'atteindre cette classe en mode développement, ou via {@link #lancerInterfaceGraphiqueVoisine()}
- * pour le binaire natif packagé (jpackage), qui n'a pas de wrapper devant lui.
+ * pour le binaire packagé — lanceur natif jpackage, ou (pour éviter le coût d'auto-identification
+ * rpm/dpkg de ce dernier à chaque démarrage) le script léger {@code lecture-fast} qui appelle
+ * directement le runtime Java packagé, avec la propriété système {@code teacherflow.bindir}
+ * indiquant où trouver l'exécutable graphique voisin.
  */
 public final class Lecture {
 
@@ -94,13 +97,12 @@ public final class Lecture {
      * réutiliser la configuration de {@code lecture}) — on les retire donc avant de le démarrer.
      */
     private static void lancerInterfaceGraphiqueVoisine() {
-        Optional<String> commande = ProcessHandle.current().info().command();
-        if (commande.isEmpty()) {
+        Path binaireVoisin = resoudreBinaireGraphiqueVoisin();
+        if (binaireVoisin == null) {
             System.err.println("Impossible de localiser l'exécutable graphique voisin.");
             System.exit(1);
             return;
         }
-        Path binaireVoisin = Path.of(commande.get()).resolveSibling("teacherflow");
         if (!Files.isExecutable(binaireVoisin)) {
             System.err.println("Exécutable graphique introuvable : " + binaireVoisin
                     + " (\"lecture .\" n'est disponible que depuis l'application installée via jpackage).");
@@ -119,6 +121,23 @@ public final class Lecture {
             System.err.println("Impossible de lancer l'interface graphique : " + e.getMessage());
             System.exit(1);
         }
+    }
+
+    /**
+     * Localise l'exécutable {@code teacherflow} voisin. Priorité à la propriété système
+     * {@code teacherflow.bindir} (positionnée par {@code lecture-fast}, qui appelle le runtime
+     * Java packagé directement — {@link ProcessHandle#command()} y renverrait le chemin de
+     * {@code java}, pas celui de {@code lecture}) ; à défaut, déduite du chemin de l'exécutable
+     * courant (cas du lanceur natif jpackage, qui n'a pas de wrapper devant lui).
+     */
+    private static Path resoudreBinaireGraphiqueVoisin() {
+        String repertoireBin = System.getProperty("teacherflow.bindir");
+        if (repertoireBin != null) {
+            return Path.of(repertoireBin, "teacherflow");
+        }
+        return ProcessHandle.current().info().command()
+                .map(commande -> Path.of(commande).resolveSibling("teacherflow"))
+                .orElse(null);
     }
 
     private static void afficherAide() {

@@ -7,16 +7,16 @@ SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 PROJET_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 cd "$PROJET_DIR" || exit 1
 
-CLASSPATH_CACHE="target/lecture-classpath.txt"
+CLASSPATH_CACHE="core/target/lecture-classpath.txt"
 
-if [ ! -d target/classes ]; then
-    mvn -q compile || exit 1
+if [ ! -d core/target/classes ]; then
+    mvn -q -pl core -am compile || exit 1
 fi
 
-if [ ! -f "$CLASSPATH_CACHE" ] || [ pom.xml -nt "$CLASSPATH_CACHE" ]; then
-    mvn -q dependency:build-classpath -Dmdep.outputFile="$CLASSPATH_CACHE" || exit 1
+if [ ! -f "$CLASSPATH_CACHE" ] || [ pom.xml -nt "$CLASSPATH_CACHE" ] || [ core/pom.xml -nt "$CLASSPATH_CACHE" ]; then
+    mvn -q -pl core dependency:build-classpath -Dmdep.outputFile="$PROJET_DIR/$CLASSPATH_CACHE" || exit 1
 fi
 
-exec java --module-path "target/classes:$(cat "$CLASSPATH_CACHE")" \
-    --add-modules com.teacherflow.app \
-    --module com.teacherflow.app/com.teacherflow.cli.GenererDonneesTest
+exec java --module-path "core/target/classes:$(cat "$CLASSPATH_CACHE")" \
+    --add-modules com.teacherflow.core \
+    --module com.teacherflow.core/com.teacherflow.cli.GenererDonneesTest

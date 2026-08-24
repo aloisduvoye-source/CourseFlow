@@ -5,30 +5,32 @@
 # À installer via :
 #   ln -s "$(pwd)/bin/lecture" ~/.local/bin/lecture
 #
-# Appelle "java" directement (classpath mis en cache dans target/) plutôt que
-# "mvn javafx:run" à chaque exécution : Maven doit se réinitialiser et résoudre le plugin
-# à chaque appel (~1,3 s), contre ~0,3 s pour un lancement JVM direct.
+# Appelle "java" directement sur le seul module "core" (classpath mis en cache dans
+# core/target/) plutôt que "mvn javafx:run" à chaque exécution : Maven doit se réinitialiser et
+# résoudre le plugin à chaque appel (~1,3 s), contre ~0,3 s pour un lancement JVM direct. "core"
+# ne dépend pas de JavaFX/AtlantaFX (voir module-info.java) : "lecture" n'a donc jamais à charger
+# le module graphique, même quand il est présent sur le module-path/dans le projet.
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 PROJET_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 cd "$PROJET_DIR" || exit 1
 
 if [ "$1" = "." ]; then
-    setsid mvn -q javafx:run < /dev/null > /dev/null 2>&1 &
+    setsid mvn -q -pl app -am javafx:run < /dev/null > /dev/null 2>&1 &
     disown
     exit 0
 fi
 
-CLASSPATH_CACHE="target/lecture-classpath.txt"
+CLASSPATH_CACHE="core/target/lecture-classpath.txt"
 
-if [ ! -d target/classes ]; then
-    mvn -q compile || exit 1
+if [ ! -d core/target/classes ]; then
+    mvn -q -pl core -am compile || exit 1
 fi
 
-if [ ! -f "$CLASSPATH_CACHE" ] || [ pom.xml -nt "$CLASSPATH_CACHE" ]; then
-    mvn -q dependency:build-classpath -Dmdep.outputFile="$CLASSPATH_CACHE" || exit 1
+if [ ! -f "$CLASSPATH_CACHE" ] || [ pom.xml -nt "$CLASSPATH_CACHE" ] || [ core/pom.xml -nt "$CLASSPATH_CACHE" ]; then
+    mvn -q -pl core dependency:build-classpath -Dmdep.outputFile="$PROJET_DIR/$CLASSPATH_CACHE" || exit 1
 fi
 
-exec java --module-path "target/classes:$(cat "$CLASSPATH_CACHE")" \
-    --add-modules com.teacherflow.app \
-    --module com.teacherflow.app/com.teacherflow.cli.Lecture "$@"
+exec java --module-path "core/target/classes:$(cat "$CLASSPATH_CACHE")" \
+    --add-modules com.teacherflow.core \
+    --module com.teacherflow.core/com.teacherflow.cli.Lecture "$@"

@@ -58,13 +58,13 @@ Lancée dans un terminal, `lecture` fonctionne par sous-commandes (`slot`, `slot
 
 La recherche de cours/fichier par nom est exacte (insensible à la casse). Cela permet à l'utilisateur d'avoir, en une seule commande, tous les documents de son heure de cours ouverts et prêts à l'emploi — un gain de temps immédiat entre deux cours ou juste avant d'entrer en classe.
 
-Techniquement, cette commande fonctionne **sans lancer l'interface graphique** (sauf avec `.`) : [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) est un point d'entrée headless qui lit les mêmes données que l'application JavaFX ([EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java)) et réutilise la même logique d'ouverture de fichiers ([OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java)). Voir [Installation et démarrage](#installation-et-démarrage) pour l'utiliser.
+Techniquement, cette commande fonctionne **sans lancer l'interface graphique** (sauf avec `.`) : [Lecture](core/src/main/java/com/teacherflow/cli/Lecture.java) est un point d'entrée headless qui lit les mêmes données que l'application JavaFX ([EmploiDuTemps](core/src/main/java/com/teacherflow/model/EmploiDuTemps.java) via [DataStore](core/src/main/java/com/teacherflow/persistence/DataStore.java)) et réutilise la même logique d'ouverture de fichiers ([OuvreurFichiers](core/src/main/java/com/teacherflow/io/OuvreurFichiers.java)). Voir [Installation et démarrage](#installation-et-démarrage) pour l'utiliser.
 
 ## Stack technique
 
 - **Langage** : Java 21
 - **UI** : JavaFX 21 (javafx-controls, javafx-fxml)
-- **Build** : Maven (javafx-maven-plugin déjà configuré)
+- **Build** : Maven multi-module — [core](core/) (`com.teacherflow.core` : `cli`/`model`/`persistence`/`io`/`util`, zéro dépendance JavaFX/AtlantaFX, utilisé par la commande `lecture`) et [app](app/) (`com.teacherflow.app` : `app`/`ui`, interface JavaFX, dépend de `core`). Séparation faite pour que `lecture` n'ait jamais à résoudre le module graphique au démarrage (javafx-maven-plugin configuré dans `app/pom.xml`).
 - **Persistance** : à trancher (voir Phase 1 de la roadmap) — probablement fichier local structuré (JSON) dans un premier temps, avec migration possible vers SQLite si le volume de données ou les besoins de requêtage le justifient.
 - **Ouverture de fichiers** : commande native du système (`xdg-open` sur Linux, `open` sur macOS, `start` sur Windows) via `ProcessBuilder`. `java.awt.Desktop` a été écarté : l'initialiser dans une appli JavaFX sur Linux charge un toolkit GTK concurrent de celui de JavaFX et fait planter la JVM.
 - **Packaging final envisagé** : `jpackage` pour produire des installeurs natifs (Windows/macOS/Linux) et exposer la commande `lecture` comme exécutable accessible depuis le terminal.
@@ -77,8 +77,10 @@ Techniquement, cette commande fonctionne **sans lancer l'interface graphique** (
 
 ### Lancer l'application
 ```
-mvn javafx:run
+mvn -pl app -am javafx:run
 ```
+(Projet Maven multi-module — voir [Stack technique](#stack-technique) — `-pl app -am` cible le
+module graphique et construit `core` d'abord.)
 
 ### Lancer les tests
 ```
@@ -124,9 +126,17 @@ Compile, fait tourner les tests, puis construit dans `target/dist/` :
   pour tester ;
 - un paquet `.deb` installable (`target/dist/teacherflow_1.0.0_amd64.deb`).
 
-Les deux embarquent leur propre image d'exécution Java (via `jlink`), avec deux exécutables
-natifs partageant le même runtime : `teacherflow` (interface graphique) et `lecture` (CLI,
-équivalent packagé de `bin/lecture`, y compris `lecture .`). Installer le paquet :
+Les deux embarquent leur propre image d'exécution Java (via `jlink`), avec deux points d'entrée
+partageant le même runtime : `teacherflow` (interface graphique, lanceur natif jpackage) et
+`lecture` (CLI). `lecture` **n'est volontairement pas** le lanceur natif jpackage : ce dernier
+interroge `rpm`/`dpkg` à chaque démarrage pour s'auto-identifier (~1 à 1,3 s perdues à chaque
+lancement, mesuré au `strace` — inutile pour une commande CLI censée être instantanée). Il est
+remplacé par un script qui appelle directement le runtime Java packagé sur le module
+`com.teacherflow.core` — qui ne dépend jamais de JavaFX/AtlantaFX, voir [Stack
+technique](#stack-technique) — écrit dans `target/dist/teacherflow/bin/lecture` par
+[bin/build-installer](bin/build-installer) pour l'app-image, et dans
+`/opt/teacherflow/bin/lecture-fast` par le `postinst` du `.deb` (voir plus bas). Résultat : ~0,6 s
+par appel au lieu de ~1,8-2 s. Installer le paquet :
 ```
 sudo dpkg -i target/dist/teacherflow_1.0.0_amd64.deb
 ```
@@ -149,17 +159,23 @@ Pour explorer l'interface sans tout créer à la main :
 bin/donnees-test
 ```
 Génère 7 cours réalistes (niveau + matière, couleur aléatoire, 2-4 fichiers chacun) et 18 créneaux répartis sur la semaine, dans `~/.teacherflow/data.json`. Les fichiers factices sont créés dans [test/](test/) (texte brut). Les données existantes sont sauvegardées en `.bak` avant d'être remplacées.
-Le script lance `java` directement (module-path + classpath mis en cache dans `target/lecture-classpath.txt` lors du premier appel, régénéré si `pom.xml` change) plutôt que de repasser par `mvn javafx:run` à chaque fois — ~0,3 s par appel au lieu de ~1,4 s, Maven n'ayant plus à se réinitialiser. Seul `lecture .` (lancement de l'appli graphique) passe encore par `mvn javafx:run`, sans impact puisqu'il n'est pas sur le chemin critique d'usage répété. Pas besoin de builder un jar séparément pour l'instant (voir Phase 8 pour un vrai exécutable packagé).
+Le script lance `java` directement sur le seul module `core` (module-path + classpath mis en
+cache dans `core/target/lecture-classpath.txt` lors du premier appel, régénéré si `pom.xml`
+change) plutôt que de repasser par `mvn javafx:run` à chaque fois — ~0,3 s par appel au lieu de
+~1,4 s, Maven n'ayant plus à se réinitialiser. Seul `lecture .` (lancement de l'appli graphique)
+passe encore par `mvn javafx:run` en dev, sans impact puisqu'il n'est pas sur le chemin critique
+d'usage répété. Pas besoin de builder un jar séparément pour l'instant (voir Phase 8 pour un vrai
+exécutable packagé).
 
 ## État actuel du projet
 
-- **Socle (modèle + persistance)** ✅ — [Fichier](src/main/java/com/teacherflow/model/Fichier.java), [Cours](src/main/java/com/teacherflow/model/Cours.java), [Creneau](src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](src/main/java/com/teacherflow/model/EmploiDuTemps.java) ; persistance JSON via [DataStore](src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson) dans `~/.teacherflow/data.json` ; couvert par des tests unitaires (`mvn test`).
-- **Gestion des Cours (UI)** ✅ — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle, dossier réel référencé et actualisable avec sélection des fichiers à importer, ou lien web) ou en retirer plusieurs à la fois, supprimer un cours (icône corbeille). Recherche/filtre par nom ou tag ; étiquettes choisies dans un vocabulaire prédéfini/extensible ; un cours désigné "par défaut" dont les autres cours peuvent réutiliser des fichiers sans les dupliquer. Branché dans [App.java](src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
-- **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille des 7 jours (7h-20h), créer/modifier/supprimer un créneau via une boîte de dialogue (y compris salle et description, tous deux optionnels), rendu coloré par cours affichant nom + salle + horaires + description directement sur le bloc. Un créneau placé peut être glissé à la souris (déplacement libre entre jours et horaires, par pas de 10 min) et redimensionné en tirant son bord haut/bas. La largeur des colonnes s'adapte à la largeur de la fenêtre. Accessible via un onglet dédié dans [App.java](src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
+- **Socle (modèle + persistance)** ✅ — [Fichier](core/src/main/java/com/teacherflow/model/Fichier.java), [Cours](core/src/main/java/com/teacherflow/model/Cours.java), [Creneau](core/src/main/java/com/teacherflow/model/Creneau.java), [EmploiDuTemps](core/src/main/java/com/teacherflow/model/EmploiDuTemps.java) ; persistance JSON via [DataStore](core/src/main/java/com/teacherflow/persistence/DataStore.java) (Jackson) dans `~/.teacherflow/data.json` ; couvert par des tests unitaires (`mvn test`).
+- **Gestion des Cours (UI)** ✅ — [CoursGestionPane](app/src/main/java/com/teacherflow/ui/CoursGestionPane.java) : créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle, dossier réel référencé et actualisable avec sélection des fichiers à importer, ou lien web) ou en retirer plusieurs à la fois, supprimer un cours (icône corbeille). Recherche/filtre par nom ou tag ; étiquettes choisies dans un vocabulaire prédéfini/extensible ; un cours désigné "par défaut" dont les autres cours peuvent réutiliser des fichiers sans les dupliquer. Branché dans [App.java](app/src/main/java/com/teacherflow/app/App.java) qui charge/sauvegarde automatiquement les données à chaque modification et à la fermeture. Testé manuellement dans l'application.
+- **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](app/src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java) : grille des 7 jours (7h-20h), créer/modifier/supprimer un créneau via une boîte de dialogue (y compris salle et description, tous deux optionnels), rendu coloré par cours affichant nom + salle + horaires + description directement sur le bloc. Un créneau placé peut être glissé à la souris (déplacement libre entre jours et horaires, par pas de 10 min) et redimensionné en tirant son bord haut/bas. La largeur des colonnes s'adapte à la largeur de la fenêtre. Accessible via un onglet dédié dans [App.java](app/src/main/java/com/teacherflow/app/App.java). Testé manuellement dans l'application.
 - **Sélection de fichiers par créneau (UI)** ✅ — dans la boîte de dialogue d'un créneau : liste à cocher des fichiers du Cours associé (tout coché par défaut à la création), boutons "Tout cocher"/"Tout décocher", et bouton "Ouvrir maintenant" qui ouvre les fichiers cochés sans passer par le terminal. Testé manuellement dans l'application.
-- **Commande `lecture` (CLI)** ✅ — [Lecture](src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](src/main/java/com/teacherflow/cli/ArgumentsLecture.java) + [NavigationCreneaux](src/main/java/com/teacherflow/cli/NavigationCreneaux.java) + [GrilleAscii](src/main/java/com/teacherflow/cli/GrilleAscii.java) (testés unitairement) : sous-commandes `slot`/`slots`/`schedule`/`courses`/`course`/`open-file`, ciblage par `--day`/`--date`+`--time` ou `--next`/`--previous` (avertissement si le créneau résolu tombe un autre jour que la référence), et lancement de l'appli graphique (`lecture .`) — ouvre les fichiers via la logique partagée [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java). Appel `java` direct (classpath mis en cache) plutôt que `mvn` à chaque exécution. Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
-- **Accueil (UI)** ✅ — [AccueilPane](src/main/java/com/teacherflow/ui/AccueilPane.java) : équivalent graphique de la commande `lecture`, affiche le créneau du moment (cours, salle, description, fichiers) avec un bouton pour tout ouvrir, et des boutons précédent/suivant (réutilise [NavigationCreneaux](src/main/java/com/teacherflow/cli/NavigationCreneaux.java)) pour naviguer même pendant un creux entre deux cours. Onglet par défaut au lancement.
-- **Thème (UI)** ✅ — [AtlantaFX](https://github.com/mkpaz/atlantafx) (thème Primer, licence MIT) appliqué au démarrage dans [App.java](src/main/java/com/teacherflow/app/App.java) ; case "Thème sombre" en bas de la barre latérale, préférence persistée dans [Parametres](src/main/java/com/teacherflow/model/Parametres.java). Les couleurs de chrome (grilles, séparateurs, textes secondaires) utilisent les jetons du thème (`-color-*`) pour rester correctes dans les deux modes ; les couleurs par cours restent codées en dur (choisies par l'utilisateur, hors thème).
+- **Commande `lecture` (CLI)** ✅ — [Lecture](core/src/main/java/com/teacherflow/cli/Lecture.java) + [ArgumentsLecture](core/src/main/java/com/teacherflow/cli/ArgumentsLecture.java) + [NavigationCreneaux](core/src/main/java/com/teacherflow/cli/NavigationCreneaux.java) + [GrilleAscii](core/src/main/java/com/teacherflow/cli/GrilleAscii.java) (testés unitairement) : sous-commandes `slot`/`slots`/`schedule`/`courses`/`course`/`open-file`, ciblage par `--day`/`--date`+`--time` ou `--next`/`--previous` (avertissement si le créneau résolu tombe un autre jour que la référence), et lancement de l'appli graphique (`lecture .`) — ouvre les fichiers via la logique partagée [OuvreurFichiers](core/src/main/java/com/teacherflow/io/OuvreurFichiers.java). Vit dans le module [core](core/) (zéro dépendance JavaFX/AtlantaFX, voir [Stack technique](#stack-technique)) ; appel `java` direct (classpath mis en cache) plutôt que `mvn` à chaque exécution en dev, et lanceur natif jpackage contourné une fois packagé (voir Phase 8). Installable via [bin/lecture](bin/lecture). Testé manuellement en ligne de commande.
+- **Accueil (UI)** ✅ — [AccueilPane](app/src/main/java/com/teacherflow/ui/AccueilPane.java) : équivalent graphique de la commande `lecture`, affiche le créneau du moment (cours, salle, description, fichiers) avec un bouton pour tout ouvrir, et des boutons précédent/suivant (réutilise [NavigationCreneaux](core/src/main/java/com/teacherflow/cli/NavigationCreneaux.java)) pour naviguer même pendant un creux entre deux cours. Onglet par défaut au lancement.
+- **Thème (UI)** ✅ — [AtlantaFX](https://github.com/mkpaz/atlantafx) (thème Primer, licence MIT) appliqué au démarrage dans [App.java](app/src/main/java/com/teacherflow/app/App.java) ; case "Thème sombre" en bas de la barre latérale, préférence persistée dans [Parametres](core/src/main/java/com/teacherflow/model/Parametres.java). Les couleurs de chrome (grilles, séparateurs, textes secondaires) utilisent les jetons du thème (`-color-*`) pour rester correctes dans les deux modes ; les couleurs par cours restent codées en dur (choisies par l'utilisateur, hors thème).
 - **Navigation** : barre latérale verticale (Accueil / Cours / Emploi du temps / Paramètres), fenêtre maximisée au lancement.
 - **Reste à construire** : confort/robustesse, fonctionnalités avancées et packaging natif (Phases 6-8, optionnelles).
 
@@ -210,20 +226,20 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - [x] Script d'installation ([bin/lecture](bin/lecture)) appelant le point d'entrée CLI via `mvn javafx:run -Djavafx.mainClass=...`
 
 ### Phase 6 — Confort & robustesse (quasi terminée — 2 items reportés)
-- [x] Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur — [OuvreurFichiers](src/main/java/com/teacherflow/io/OuvreurFichiers.java) détecte un chemin local manquant avant de tenter l'ouverture (la commande native comme `xdg-open` échoue silencieusement de notre point de vue sinon) et renvoie un message par fichier (libellé + raison)
-- [x] Annuler/rétablir (Ctrl+Z / Ctrl+Maj+Z) sur l'emploi du temps, pour rattraper un créneau déplacé, redimensionné, supprimé, dupliqué ou modifié par erreur — pile d'instantanés dans [EmploiDuTempsPane](src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java), scopée à cet onglet (n'affecte pas les cours)
+- [x] Gestion des erreurs (fichier manquant, chemin invalide) avec message clair à l'utilisateur — [OuvreurFichiers](core/src/main/java/com/teacherflow/io/OuvreurFichiers.java) détecte un chemin local manquant avant de tenter l'ouverture (la commande native comme `xdg-open` échoue silencieusement de notre point de vue sinon) et renvoie un message par fichier (libellé + raison)
+- [x] Annuler/rétablir (Ctrl+Z / Ctrl+Maj+Z) sur l'emploi du temps, pour rattraper un créneau déplacé, redimensionné, supprimé, dupliqué ou modifié par erreur — pile d'instantanés dans [EmploiDuTempsPane](app/src/main/java/com/teacherflow/ui/EmploiDuTempsPane.java), scopée à cet onglet (n'affecte pas les cours)
 - [x] Édition rapide — glisser-déposer des fichiers depuis l'explorateur du système sur la liste d'un cours ; dupliquer un créneau (bouton dans sa boîte de dialogue, la copie se replace ensuite à la souris)
 - [ ] Édition rapide — réorganisation des fichiers dans la liste d'un cours, duplication d'un jour entier vers un autre (mis de côté pour l'instant)
-- [x] Recherche/filtre dans la liste des cours et fichiers — [CoursGestionPane](src/main/java/com/teacherflow/ui/CoursGestionPane.java) : champ de recherche par nom (cours et fichiers), la recherche fichiers matche aussi les tags
+- [x] Recherche/filtre dans la liste des cours et fichiers — [CoursGestionPane](app/src/main/java/com/teacherflow/ui/CoursGestionPane.java) : champ de recherche par nom (cours et fichiers), la recherche fichiers matche aussi les tags
 - [x] Étiquettes/tags sur les fichiers, choisies dans un vocabulaire prédéfini et extensible (`dm`, `td`, `correction`, `cm` par défaut) pour trier indépendamment du cours
 - [ ] Aperçu rapide d'un fichier (PDF/image) directement dans l'appli, sans ouvrir le logiciel externe (mis de côté pour l'instant — aurait nécessité une nouvelle dépendance pour le rendu PDF)
-- [x] Sauvegarde/export de la configuration (pour changer de machine ou sauvegarder) — section "Sauvegarde" dans [ParametresPane](src/main/java/com/teacherflow/ui/ParametresPane.java)
+- [x] Sauvegarde/export de la configuration (pour changer de machine ou sauvegarder) — section "Sauvegarde" dans [ParametresPane](app/src/main/java/com/teacherflow/ui/ParametresPane.java)
 - [x] Dossier réel du disque référencé par un Cours (persistant, pas un import ponctuel), avec sélection explicite des fichiers à importer (récursif optionnel) et actualisation pour importer les nouveaux fichiers sans dupliquer l'existant
 - [x] Cours par défaut désigné parmi les cours existants : les autres cours peuvent déplier ses fichiers et cocher lesquels réutiliser, sans dupliquer le fichier (remplace l'idée abandonnée de lier n'importe quel cours à n'importe quel cours, qui posait un problème de cycles) — ni les dossiers virtuels (abandonnés au profit des tags)
 - [x] Ajout de liens web (URL) comme "fichiers" ouvrables au même titre que les fichiers locaux
 - [x] Suppression d'un Cours via la même icône corbeille que la suppression de fichier (cohérence visuelle)
 - [x] Refonte graphique professionnelle, sobre mais réactive : thème(s), animations/transitions, micro-interactions — remplace le rendu par défaut JavaFX utilisé jusqu'ici (le style avait été volontairement mis de côté jusqu'à cette phase) — [AtlantaFX](https://github.com/mkpaz/atlantafx) (thème Primer), clair/sombre avec bascule persistée dans les paramètres ; couleurs de chrome codées en dur remplacées par les jetons du thème pour un rendu correct dans les deux ; micro-interactions (hover/focus/pressed) fournies par le thème. Pas d'animations/transitions custom écrites à la main pour l'instant.
-- [x] Section "Accueil" dans la barre latérale : équivalent graphique de la commande `lecture`, propose directement les fichiers du créneau de l'heure avec boutons précédent/suivant (pour enchaîner sans effet de battement entre deux créneaux) — [AccueilPane](src/main/java/com/teacherflow/ui/AccueilPane.java), onglet par défaut au lancement
+- [x] Section "Accueil" dans la barre latérale : équivalent graphique de la commande `lecture`, propose directement les fichiers du créneau de l'heure avec boutons précédent/suivant (pour enchaîner sans effet de battement entre deux créneaux) — [AccueilPane](app/src/main/java/com/teacherflow/ui/AccueilPane.java), onglet par défaut au lancement
 
 ### Phase 7 — Fonctionnalités avancées (optionnel, post-MVP)
 - [x] Gestion de semaines alternées (semaine A / semaine B) : date d'ancrage réglable dans les Paramètres (parité par rapport à cette date), créneaux réglables sur "toutes les semaines" (défaut, comportement historique inchangé), "semaine A" ou "semaine B" ; sélecteur de semaine affichée dans l'emploi du temps, filtrage automatique dans l'Accueil et le CLI (`lecture`, `slot`, `slots`, `schedule`, `open-file`). La navigation précédent/suivant ignore volontairement l'alternance pour l'instant (parcourt jour/heure comme avant)
@@ -237,17 +253,27 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
   construit une image d'exécution minimale via `jlink`, puis un app-image portable et un paquet
   `.deb` avec `jpackage`, embarquant deux lanceurs natifs partageant le même runtime —
   `teacherflow` (GUI) et `lecture` (CLI, [packaging/lecture-launcher.properties](packaging/lecture-launcher.properties)).
-  `lecture .` fonctionne aussi depuis le binaire natif packagé (démarre le lanceur `teacherflow`
+  `lecture .` fonctionne aussi depuis le binaire packagé (démarre l'exécutable `teacherflow`
   voisin, détaché via `setsid`, avec les variables d'environnement propres au lanceur `lecture`
   retirées pour ne pas perturber son démarrage — voir `lancerInterfaceGraphiqueVoisine` dans
-  [Lecture.java](src/main/java/com/teacherflow/cli/Lecture.java)). Pas de `.rpm` (`rpmbuild`
+  [Lecture.java](core/src/main/java/com/teacherflow/cli/Lecture.java)). Pas de `.rpm` (`rpmbuild`
   absent de la machine de dev) ni de build Windows/macOS (nécessiterait des machines dédiées).
+- [x] `lecture` sans le coût du lanceur natif jpackage : ce dernier interroge `rpm`/`dpkg` à
+  chaque démarrage pour s'auto-identifier (~1 à 1,3 s perdues à chaque lancement, mesuré au
+  `strace`). `bin/build-installer` le remplace, dans l'app-image, par un script qui appelle
+  directement le runtime Java packagé sur le module `com.teacherflow.core` (jamais de dépendance
+  JavaFX/AtlantaFX à résoudre) ; le `postinst` du `.deb` fait de même en écrivant
+  `/opt/teacherflow/bin/lecture-fast`. `lancerInterfaceGraphiqueVoisine` (dans
+  [Lecture.java](core/src/main/java/com/teacherflow/cli/Lecture.java)) retrouve l'exécutable
+  `teacherflow` voisin via la propriété système `teacherflow.bindir` positionnée par ces scripts
+  (repli sur le chemin de l'exécutable courant si absente, pour le lanceur natif jpackage
+  toujours présent mais non utilisé par défaut). Gain mesuré : ~1,8-2 s → ~0,6 s par appel.
 - [x] Exposition de la commande `lecture` dans le PATH : automatique pour le paquet `.deb` via un
   script `postinst`/`postrm` `jpackage` personnalisé qui relie/retire `/usr/local/bin/lecture`
   ([packaging/deb/postinst](packaging/deb/postinst), [packaging/deb/postrm](packaging/deb/postrm),
   activés via `--resource-dir packaging/deb` dans [bin/build-installer](bin/build-installer)) ;
-  pour l'app-image portable (sans `dpkg`), même principe qu'en mode dev mais vers le binaire natif
-  (`ln -s .../teacherflow/bin/lecture ~/.local/bin/lecture`), documenté ci-dessus.
+  pour l'app-image portable (sans `dpkg`), même principe qu'en mode dev mais vers le binaire
+  packagé (`ln -s .../teacherflow/bin/lecture ~/.local/bin/lecture`), documenté ci-dessus.
 - [x] Documentation d'installation et de mise à jour — section "Installation packagée" ci-dessus
 
 ## Prochaine étape suggérée
