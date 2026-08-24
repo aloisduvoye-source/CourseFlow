@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
  * Point d'entrée CLI headless (sans interface graphique) : ouvre ou consulte les fichiers et
  * informations liés aux créneaux/cours de l'emploi du temps, via une sous-commande optionnelle
  * ({@code slot}, {@code slots}, {@code schedule}, {@code courses}, {@code course},
- * {@code open-file}). Sans sous-commande, ouvre les fichiers du créneau ciblé (courant, ou via
- * {@code --next}/{@code --previous}/{@code --day}/{@code --date}+{@code --time}).
+ * {@code open-file}, {@code week}). Sans sous-commande, ouvre les fichiers du créneau ciblé
+ * (courant, ou via {@code --next}/{@code --previous}/{@code --day}/{@code --date}+{@code --time}).
  * {@code lecture .} lance l'interface graphique (interceptée par {@code bin/lecture} avant
  * d'atteindre cette classe).
  */
@@ -68,6 +68,7 @@ public final class Lecture {
             case COURSES -> listerCours(emploiDuTemps, arguments.isMissingInfo());
             case COURSE -> afficherCours(emploiDuTemps, arguments.getNomCours());
             case OPEN_FILE -> ouvrirFichierCible(emploiDuTemps, arguments);
+            case WEEK -> traiterSemaine(dataStore, emploiDuTemps, arguments);
         }
     }
 
@@ -88,6 +89,7 @@ public final class Lecture {
                   courses     Lister les cours
                   course      Afficher les informations d'un cours
                   open-file   Ouvrir un fichier spécifique
+                  week        Afficher ou changer la semaine actuelle (A/B)
 
                 Arguments spéciaux:
                   .           Ouvrir l'interface graphique
@@ -101,6 +103,7 @@ public final class Lecture {
                   --course [COURS]        Sélectionner un cours (avec open-file)
                   --file [FICHIER]        Sélectionner un fichier (avec open-file)
                   --missing-info          Ne lister que les cours sans créneau (avec courses)
+                  --set [a|b]             Régler la semaine actuelle sur A ou B (avec week)
                   --help                  Afficher cette aide
 
                 Exemples:
@@ -127,6 +130,10 @@ public final class Lecture {
                   lecture open-file --course maths --file chapitre1.pdf
                   lecture open-file --day mercredi --time 10:00 --file cours.pdf
 
+                  lecture week
+                  lecture week --set a
+                  lecture week --set b
+
                   lecture .""");
     }
 
@@ -148,6 +155,43 @@ public final class Lecture {
             return;
         }
         afficherSlot(emploiDuTemps, creneau.get());
+    }
+
+    /**
+     * Affiche la semaine courante (A/B), ou la change via {@code --set} : dans ce cas, règle la
+     * date d'ancrage ({@link com.teacherflow.model.Parametres#setAncrageSemaineA}) sur le lundi
+     * de la semaine courante (pour {@code --set a}) ou celui de la semaine précédente (pour
+     * {@code --set b}), de façon à ce que la semaine actuelle devienne celle demandée. Utile pour
+     * corriger l'alternance quand elle a été décalée (ex. par des vacances).
+     */
+    private static void traiterSemaine(DataStore dataStore, EmploiDuTemps emploiDuTemps, ArgumentsLecture arguments) {
+        var parametres = emploiDuTemps.getParametres();
+
+        if (arguments.getSemaineVoulue() != null) {
+            LocalDate lundiCourant = LocalDate.now().with(DayOfWeek.MONDAY);
+            LocalDate nouvelAncrage = arguments.getSemaineVoulue() == TypeSemaine.A
+                    ? lundiCourant : lundiCourant.minusWeeks(1);
+            parametres.setAncrageSemaineA(nouvelAncrage);
+            try {
+                dataStore.sauvegarder(emploiDuTemps);
+            } catch (IOException e) {
+                System.err.println("Impossible d'enregistrer dans " + dataStore.getFichierDonnees()
+                        + " : " + e.getMessage());
+                System.exit(1);
+                return;
+            }
+            System.out.println("Semaine actuelle réglée sur " + arguments.getSemaineVoulue()
+                    + " (date de référence : " + nouvelAncrage + ").");
+            return;
+        }
+
+        TypeSemaine semaine = parametres.semainePour(LocalDate.now());
+        System.out.println("Semaine actuelle : " + semaine);
+        if (parametres.getAncrageSemaineA() == null) {
+            System.out.println("(Aucune date de référence définie dans les Paramètres : toutes les semaines "
+                    + "sont considérées comme la semaine A tant qu'elle n'est pas réglée, via l'application ou "
+                    + "\"lecture week --set a/b\".)");
+        }
     }
 
     /**

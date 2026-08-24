@@ -1,5 +1,6 @@
 package com.teacherflow.cli;
 
+import com.teacherflow.model.TypeSemaine;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
@@ -239,5 +240,43 @@ class ArgumentsLectureTest {
     void sousCommandeOpenFileDaySansTimeLeveUneErreur() {
         assertThrows(IllegalArgumentException.class, () -> ArgumentsLecture.analyser(
                 new String[]{"open-file", "--day", "lundi", "--file", "x.pdf"}, LocalDate.of(2026, 8, 24), LocalTime.of(8, 0)));
+    }
+
+    @Test
+    void sousCommandeWeekEstReconnueSansSet() {
+        ArgumentsLecture arguments = ArgumentsLecture.analyser(
+                new String[]{"week"}, LocalDate.of(2026, 8, 24), LocalTime.of(8, 0));
+
+        assertEquals(ArgumentsLecture.Commande.WEEK, arguments.getCommande());
+        assertNull(arguments.getSemaineVoulue());
+    }
+
+    @Test
+    void sousCommandeWeekAvecSetResoutLaSemaineVoulue() {
+        ArgumentsLecture surA = ArgumentsLecture.analyser(
+                new String[]{"week", "--set", "a"}, LocalDate.of(2026, 8, 24), LocalTime.of(8, 0));
+        assertEquals(TypeSemaine.A, surA.getSemaineVoulue());
+
+        ArgumentsLecture surB = ArgumentsLecture.analyser(
+                new String[]{"week", "--set", "B"}, LocalDate.of(2026, 8, 24), LocalTime.of(8, 0));
+        assertEquals(TypeSemaine.B, surB.getSemaineVoulue());
+    }
+
+    @Test
+    void sousCommandeWeekAvecSetInvalideLeveUneErreur() {
+        assertThrows(IllegalArgumentException.class, () -> ArgumentsLecture.analyser(
+                new String[]{"week", "--set", "c"}, LocalDate.of(2026, 8, 24), LocalTime.of(8, 0)));
+    }
+
+    @Test
+    void sousCommandeWeekNAcceptePasDeSemaineOuJour() {
+        assertThrows(IllegalArgumentException.class, () -> ArgumentsLecture.analyser(
+                new String[]{"week", "--day", "lundi"}, LocalDate.of(2026, 8, 24), LocalTime.of(8, 0)));
+    }
+
+    @Test
+    void optionSetSurUneAutreCommandeLeveUneErreur() {
+        assertThrows(IllegalArgumentException.class, () -> ArgumentsLecture.analyser(
+                new String[]{"schedule", "--set", "a"}, LocalDate.of(2026, 8, 24), LocalTime.of(8, 0)));
     }
 }
