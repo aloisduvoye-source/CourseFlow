@@ -111,6 +111,32 @@ lecture open-file --course "6e A - Mathématiques" --file exercices.pdf
 lecture .                                  # lance l'application graphique (comme "code .")
 lecture --help                             # liste toutes les commandes et options
 ```
+(`bin/lecture` ci-dessus est l'outil de développement : il tourne depuis le checkout source via
+Maven. Pour une installation native, sans dépendance à Maven ni au checkout, voir la section
+suivante.)
+
+### Installation packagée (jpackage, Linux)
+```
+bin/build-installer
+```
+Compile, fait tourner les tests, puis construit dans `target/dist/` :
+- un app-image portable (`target/dist/teacherflow/`), utilisable sans installation — pratique
+  pour tester ;
+- un paquet `.deb` installable (`target/dist/teacherflow_1.0.0_amd64.deb`).
+
+Les deux embarquent leur propre image d'exécution Java (via `jlink`), avec deux exécutables
+natifs partageant le même runtime : `teacherflow` (interface graphique) et `lecture` (CLI,
+équivalent packagé de `bin/lecture`, y compris `lecture .`). Installer le paquet :
+```
+sudo dpkg -i target/dist/teacherflow_1.0.0_amd64.deb
+```
+puis relier la commande dans le `PATH` (même principe que l'installation en mode dev, mais vers
+le binaire natif installé) :
+```
+ln -s /opt/teacherflow/bin/lecture ~/.local/bin/lecture
+```
+Nécessite un JDK complet (pas juste un JRE) pour `jpackage`/`jlink` ; `.deb` uniquement pour
+l'instant (pas de `.rpm`, pas de build Windows/macOS — voir la roadmap).
 
 ### Générer des données de test
 Pour explorer l'interface sans tout créer à la main :
@@ -202,9 +228,20 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - Synchronisation multi-appareils
 
 ### Phase 8 — Packaging & distribution
-- Génération d'installeurs natifs via `jpackage`
-- Exposition de la commande `lecture` dans le PATH utilisateur
-- Documentation d'installation et de mise à jour
+- [x] Génération d'installeurs natifs via `jpackage` (Linux) : [bin/build-installer](bin/build-installer)
+  construit une image d'exécution minimale via `jlink`, puis un app-image portable et un paquet
+  `.deb` avec `jpackage`, embarquant deux lanceurs natifs partageant le même runtime —
+  `teacherflow` (GUI) et `lecture` (CLI, [packaging/lecture-launcher.properties](packaging/lecture-launcher.properties)).
+  `lecture .` fonctionne aussi depuis le binaire natif packagé (démarre le lanceur `teacherflow`
+  voisin, détaché via `setsid`, avec les variables d'environnement propres au lanceur `lecture`
+  retirées pour ne pas perturber son démarrage — voir `lancerInterfaceGraphiqueVoisine` dans
+  [Lecture.java](src/main/java/com/teacherflow/cli/Lecture.java)). Pas de `.rpm` (`rpmbuild`
+  absent de la machine de dev) ni de build Windows/macOS (nécessiterait des machines dédiées).
+- [x] Exposition de la commande `lecture` dans le PATH utilisateur : même principe qu'en mode dev
+  (`ln -s .../bin/lecture ~/.local/bin/lecture`), documenté ci-dessus, mais vers le binaire natif
+  installé plutôt que le script de dev — pas d'automatisation par le paquet `.deb` lui-même pour
+  l'instant (pas de post-install script ajoutant le lien).
+- [x] Documentation d'installation et de mise à jour — section "Installation packagée" ci-dessus
 
 ## Prochaine étape suggérée
 
