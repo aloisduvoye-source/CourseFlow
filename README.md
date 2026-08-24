@@ -195,7 +195,7 @@ Le script lance `java` directement (module-path + classpath mis en cache dans `t
 - [x] Section "Accueil" dans la barre latérale : équivalent graphique de la commande `lecture`, propose directement les fichiers du créneau de l'heure avec boutons précédent/suivant (pour enchaîner sans effet de battement entre deux créneaux) — [AccueilPane](src/main/java/com/teacherflow/ui/AccueilPane.java), onglet par défaut au lancement
 
 ### Phase 7 — Fonctionnalités avancées (optionnel, post-MVP)
-- Gestion de semaines alternées (semaine A / semaine B)
+- [x] Gestion de semaines alternées (semaine A / semaine B) : date d'ancrage réglable dans les Paramètres (parité par rapport à cette date), créneaux réglables sur "toutes les semaines" (défaut, comportement historique inchangé), "semaine A" ou "semaine B" ; sélecteur de semaine affichée dans l'emploi du temps, filtrage automatique dans l'Accueil et le CLI (`lecture`, `slot`, `slots`, `schedule`, `open-file`). La navigation précédent/suivant ignore volontairement l'alternance pour l'instant (parcourt jour/heure comme avant)
 - Enregistrement de configurations de semaine nommées, réutilisables (au-delà de la simple alternance A/B)
 - Notifications/rappels avant le début d'un créneau
 - Historique ou statistiques d'usage
