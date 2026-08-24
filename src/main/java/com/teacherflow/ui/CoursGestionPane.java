@@ -700,10 +700,7 @@ public class CoursGestionPane extends BorderPane {
     }
 
     private Label pastilleTag(String tag) {
-        Label pastille = new Label(tag);
-        pastille.setStyle("-fx-background-color: " + emploiDuTemps.getParametres().couleurTag(tag)
-                + "; -fx-background-radius: 8; -fx-padding: 1 8 1 8; -fx-text-fill: white; -fx-font-size: 10;");
-        return pastille;
+        return TagPills.pastille(tag, emploiDuTemps.getParametres().couleurTag(tag));
     }
 
     private void modifierTags(Fichier fichier) {

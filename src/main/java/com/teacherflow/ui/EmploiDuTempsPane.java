@@ -9,7 +9,6 @@ import com.teacherflow.model.Parametres;
 import com.teacherflow.model.PlageHoraire;
 import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.util.NomsJours;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -22,15 +21,16 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
@@ -583,17 +583,45 @@ public class EmploiDuTempsPane extends BorderPane {
 
         ListView<Fichier> listeFichiers = new ListView<>();
         listeFichiers.setPrefHeight(160);
-        listeFichiers.setCellFactory(CheckBoxListCell.forListView(fichier -> {
-            SimpleBooleanProperty propriete = new SimpleBooleanProperty(fichiersCoches.contains(fichier.getId()));
-            propriete.addListener((obs, etaitCoche, estCoche) -> {
-                if (estCoche) {
-                    fichiersCoches.add(fichier.getId());
-                } else {
-                    fichiersCoches.remove(fichier.getId());
+        listeFichiers.setCellFactory(vue -> new ListCell<>() {
+            private final CheckBox caseCoche = new CheckBox();
+            private final Label libelleFichier = new Label();
+            private final HBox conteneurTags = new HBox(4);
+            private final HBox ligneCellule = new HBox(8, caseCoche, libelleFichier, conteneurTags);
+
+            {
+                conteneurTags.setAlignment(Pos.CENTER_LEFT);
+                ligneCellule.setAlignment(Pos.CENTER_LEFT);
+                caseCoche.setOnAction(e -> {
+                    Fichier fichier = getItem();
+                    if (fichier == null) {
+                        return;
+                    }
+                    if (caseCoche.isSelected()) {
+                        fichiersCoches.add(fichier.getId());
+                    } else {
+                        fichiersCoches.remove(fichier.getId());
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Fichier fichier, boolean vide) {
+                super.updateItem(fichier, vide);
+                if (vide || fichier == null) {
+                    setGraphic(null);
+                    return;
                 }
-            });
-            return propriete;
-        }));
+                libelleFichier.setText(fichier.toString());
+                caseCoche.setSelected(fichiersCoches.contains(fichier.getId()));
+                conteneurTags.getChildren().clear();
+                for (String tag : fichier.getTags()) {
+                    conteneurTags.getChildren().add(
+                            TagPills.pastille(tag, emploiDuTemps.getParametres().couleurTag(tag)));
+                }
+                setGraphic(ligneCellule);
+            }
+        });
         listeFichiers.setItems(fichiersFiltresDialogue);
         tousLesFichiersDialogue.setAll(emploiDuTemps.fichiersVisibles(coursInitial));
 
