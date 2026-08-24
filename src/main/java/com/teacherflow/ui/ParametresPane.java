@@ -14,6 +14,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -35,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -93,6 +95,7 @@ public class ParametresPane extends BorderPane {
                 construireSectionIncrement(),
                 construireSectionPlageGrille(),
                 new VBox(6, titreBlocs, aideBlocs, ligneGrille),
+                construireSectionSemainesAlternees(),
                 construireSectionSauvegarde());
         contenu.setPadding(new Insets(0, 12, 0, 0));
 
@@ -186,6 +189,39 @@ public class ParametresPane extends BorderPane {
             heure = heure.plusMinutes(30);
         }
         return options;
+    }
+
+    private VBox construireSectionSemainesAlternees() {
+        Label aide = new Label("Date de référence : une date qui tombe dans une \"semaine A\". Les autres "
+                + "semaines en sont déduites par alternance. Laisser vide désactive la distinction "
+                + "semaine A/semaine B (tous les créneaux réglés sur \"toutes les semaines\" restent inchangés).");
+        aide.setWrapText(true);
+        aide.setMaxWidth(420);
+
+        DatePicker selecteurDate = new DatePicker(parametres.getAncrageSemaineA());
+        Button boutonEffacer = new Button("Effacer");
+        Label libelleSemaineActuelle = new Label();
+
+        Runnable actualiserLibelle = () -> libelleSemaineActuelle.setText(
+                "Aujourd'hui = Semaine " + parametres.semainePour(LocalDate.now()));
+        actualiserLibelle.run();
+
+        selecteurDate.setOnAction(e -> {
+            parametres.setAncrageSemaineA(selecteurDate.getValue());
+            actualiserLibelle.run();
+            notifierChangement();
+        });
+        boutonEffacer.setOnAction(e -> {
+            selecteurDate.setValue(null);
+            parametres.setAncrageSemaineA(null);
+            actualiserLibelle.run();
+            notifierChangement();
+        });
+
+        HBox ligneDate = new HBox(8, selecteurDate, boutonEffacer);
+        ligneDate.setAlignment(Pos.CENTER_LEFT);
+
+        return new VBox(6, titreSection("Semaines alternées"), aide, ligneDate, libelleSemaineActuelle);
     }
 
     private VBox construireSectionSauvegarde() {
