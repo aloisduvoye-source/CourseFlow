@@ -21,6 +21,7 @@ public class Creneau {
     private List<UUID> fichiersSelectionnesIds = new ArrayList<>();
     private String salle;
     private String description;
+    private TypeSemaine typeSemaine = TypeSemaine.TOUTES;
 
     public Creneau() {
     }
@@ -38,6 +39,14 @@ public class Creneau {
      */
     public boolean contient(LocalTime heure) {
         return !heure.isBefore(heureDebut) && heure.isBefore(heureFin);
+    }
+
+    /**
+     * @return true si ce créneau s'applique à la semaine donnée (soit parce qu'il est réglé
+     * sur {@link TypeSemaine#TOUTES}, soit parce qu'il correspond exactement).
+     */
+    public boolean correspondA(TypeSemaine semaineActuelle) {
+        return typeSemaine == TypeSemaine.TOUTES || typeSemaine == semaineActuelle;
     }
 
     public void selectionnerFichier(UUID fichierId) {
@@ -112,6 +121,14 @@ public class Creneau {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public TypeSemaine getTypeSemaine() {
+        return typeSemaine;
+    }
+
+    public void setTypeSemaine(TypeSemaine typeSemaine) {
+        this.typeSemaine = typeSemaine;
     }
 
     @Override
