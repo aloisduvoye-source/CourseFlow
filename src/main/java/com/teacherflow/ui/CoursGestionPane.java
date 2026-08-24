@@ -774,7 +774,8 @@ public class CoursGestionPane extends BorderPane {
         private final ColorPicker selecteurCouleur = new ColorPicker();
         private final Label libelle = new Label();
         private final Button boutonSupprimerTag = new Button();
-        private final HBox ligne = new HBox(8, caseCoche, libelle, selecteurCouleur, boutonSupprimerTag);
+        private final Region espaceur = new Region();
+        private final HBox ligne = new HBox(8, caseCoche, libelle, espaceur, selecteurCouleur, boutonSupprimerTag);
         private final Set<String> tagsCoches;
 
         TagCell(Set<String> tagsCoches, Runnable surSuppressionTag) {
@@ -786,6 +787,7 @@ public class CoursGestionPane extends BorderPane {
                     + "-fx-padding: 0;");
             boutonSupprimerTag.setGraphic(Icons.poubelle());
             boutonSupprimerTag.setAlignment(Pos.CENTER);
+            HBox.setHgrow(espaceur, Priority.ALWAYS);
             ligne.setAlignment(Pos.CENTER_LEFT);
 
             caseCoche.setOnAction(e -> {
