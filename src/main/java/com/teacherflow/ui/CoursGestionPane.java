@@ -43,6 +43,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -54,6 +55,10 @@ import java.util.UUID;
 public class CoursGestionPane extends BorderPane {
 
     private static final String COULEUR_PAR_DEFAUT = "#3498db";
+    private static final String[] PALETTE_TAGS = {
+            "#5DADE2", "#48C9B0", "#F4D03F", "#EB984E", "#EC7063",
+            "#AF7AC5", "#5499C7", "#52BE80", "#F39C12", "#CD6155"
+    };
 
     private final EmploiDuTemps emploiDuTemps;
     private final Runnable surChangement;
@@ -638,6 +643,7 @@ public class CoursGestionPane extends BorderPane {
 
     private class FichierCell extends ListCell<Fichier> {
         private final Label libelle = new Label();
+        private final HBox conteneurTags = new HBox(4);
         private final Button boutonTags = new Button("Tags");
         private final Button boutonSupprimer = new Button();
         private final HBox ligne = new HBox(8);
@@ -666,9 +672,10 @@ public class CoursGestionPane extends BorderPane {
             ligne.prefWidthProperty().bind(listeFichiers.widthProperty().subtract(24));
             libelle.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(libelle, Priority.ALWAYS);
+            conteneurTags.setAlignment(Pos.CENTER_LEFT);
 
             ligne.setAlignment(Pos.CENTER_LEFT);
-            ligne.getChildren().addAll(libelle, boutonTags, boutonSupprimer);
+            ligne.getChildren().addAll(libelle, conteneurTags, boutonTags, boutonSupprimer);
         }
 
         @Override
@@ -680,15 +687,29 @@ public class CoursGestionPane extends BorderPane {
             }
             String texte = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
                     ? fichier.getNomAffichage() : fichier.getChemin();
-            if (!fichier.getTags().isEmpty()) {
-                texte += "  [" + String.join(", ", fichier.getTags()) + "]";
-            }
             if (estFichierLie(fichier)) {
                 texte += " (lié)";
             }
             libelle.setText(texte);
+
+            conteneurTags.getChildren().clear();
+            for (String tag : fichier.getTags()) {
+                conteneurTags.getChildren().add(pastilleTag(tag));
+            }
             setGraphic(ligne);
         }
+    }
+
+    private static Label pastilleTag(String tag) {
+        Label pastille = new Label(tag);
+        pastille.setStyle("-fx-background-color: " + couleurTag(tag) + "; -fx-background-radius: 8; "
+                + "-fx-padding: 1 8 1 8; -fx-text-fill: white; -fx-font-size: 10;");
+        return pastille;
+    }
+
+    private static String couleurTag(String tag) {
+        int index = Math.abs(tag.toLowerCase(Locale.ROOT).hashCode()) % PALETTE_TAGS.length;
+        return PALETTE_TAGS[index];
     }
 
     private void modifierTags(Fichier fichier) {
