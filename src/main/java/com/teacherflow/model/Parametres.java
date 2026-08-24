@@ -1,7 +1,9 @@
 package com.teacherflow.model;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +34,7 @@ public class Parametres {
     private List<String> tagsDisponibles = new ArrayList<>(TAGS_PAR_DEFAUT);
     private UUID coursDefautId;
     private boolean themeSombre = false;
+    private LocalDate ancrageSemaineA;
 
     private static List<PlageHoraire> blocsParDefaut() {
         List<PlageHoraire> blocs = new ArrayList<>();
@@ -106,5 +109,29 @@ public class Parametres {
 
     public void setThemeSombre(boolean themeSombre) {
         this.themeSombre = themeSombre;
+    }
+
+    public LocalDate getAncrageSemaineA() {
+        return ancrageSemaineA;
+    }
+
+    public void setAncrageSemaineA(LocalDate ancrageSemaineA) {
+        this.ancrageSemaineA = ancrageSemaineA;
+    }
+
+    /**
+     * @return la semaine (A ou B) à laquelle appartient la date donnée, par parité du nombre de
+     * semaines écoulées depuis {@link #ancrageSemaineA}. Si aucune date d'ancrage n'est réglée,
+     * retourne toujours {@code A} (comportement neutre : sans ancrage, seuls les créneaux
+     * {@code TOUTES} existent, donc rien ne change visuellement).
+     */
+    public TypeSemaine semainePour(LocalDate date) {
+        if (ancrageSemaineA == null) {
+            return TypeSemaine.A;
+        }
+        LocalDate lundiAncrage = ancrageSemaineA.with(DayOfWeek.MONDAY);
+        LocalDate lundiCible = date.with(DayOfWeek.MONDAY);
+        long semaines = ChronoUnit.WEEKS.between(lundiAncrage, lundiCible);
+        return Math.floorMod(semaines, 2) == 0 ? TypeSemaine.A : TypeSemaine.B;
     }
 }

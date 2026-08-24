@@ -2,6 +2,7 @@ package com.teacherflow.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -65,5 +66,33 @@ class ParametresTest {
         Parametres parametres = new Parametres();
 
         assertFalse(parametres.isThemeSombre());
+    }
+
+    @Test
+    void sansAncrageLaSemaineEstToujoursA() {
+        Parametres parametres = new Parametres();
+
+        assertEquals(TypeSemaine.A, parametres.semainePour(LocalDate.of(2026, 9, 7)));
+        assertEquals(TypeSemaine.A, parametres.semainePour(LocalDate.of(2027, 1, 4)));
+    }
+
+    @Test
+    void avecAncrageLaSemaineAlterneParParite() {
+        Parametres parametres = new Parametres();
+        parametres.setAncrageSemaineA(LocalDate.of(2026, 9, 7)); // lundi
+
+        assertEquals(TypeSemaine.A, parametres.semainePour(LocalDate.of(2026, 9, 7)));
+        assertEquals(TypeSemaine.A, parametres.semainePour(LocalDate.of(2026, 9, 11))); // même semaine
+        assertEquals(TypeSemaine.B, parametres.semainePour(LocalDate.of(2026, 9, 14)));
+        assertEquals(TypeSemaine.A, parametres.semainePour(LocalDate.of(2026, 9, 21)));
+    }
+
+    @Test
+    void avecAncrageLaSemaineAlterneAussiPourDesDatesAnterieures() {
+        Parametres parametres = new Parametres();
+        parametres.setAncrageSemaineA(LocalDate.of(2026, 9, 21));
+
+        assertEquals(TypeSemaine.B, parametres.semainePour(LocalDate.of(2026, 9, 14)));
+        assertEquals(TypeSemaine.A, parametres.semainePour(LocalDate.of(2026, 9, 7)));
     }
 }
