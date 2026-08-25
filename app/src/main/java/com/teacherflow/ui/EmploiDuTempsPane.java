@@ -125,7 +125,20 @@ public class EmploiDuTempsPane extends BorderPane {
         boutonB.setSelected(semaineAffichee == TypeSemaine.B);
         boutonA.setOnAction(e -> { semaineAffichee = TypeSemaine.A; rafraichir(); });
         boutonB.setOnAction(e -> { semaineAffichee = TypeSemaine.B; rafraichir(); });
-        HBox ligne = new HBox(8, boutonA, boutonB);
+
+        CheckBox caseGuides = new CheckBox("Afficher les guides");
+        caseGuides.setSelected(emploiDuTemps.getParametres().isAfficherGuidesBlocs());
+        caseGuides.setOnAction(e -> {
+            emploiDuTemps.getParametres().setAfficherGuidesBlocs(caseGuides.isSelected());
+            notifierChangement();
+            rafraichir();
+        });
+
+        Region espaceur = new Region();
+        HBox.setHgrow(espaceur, Priority.ALWAYS);
+
+        HBox ligne = new HBox(8, boutonA, boutonB, espaceur, caseGuides);
+        ligne.setAlignment(Pos.CENTER_LEFT);
         ligne.setPadding(new Insets(0, 0, 8, 0));
         return ligne;
     }
@@ -308,18 +321,30 @@ public class EmploiDuTempsPane extends BorderPane {
         for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
             DayOfWeek jour = joursAffiches[jourIndex];
             boolean journeeVide = creneauxVisibles.stream().noneMatch(c -> c.getJour() == jour);
-            
+            if (journeeVide) {
+                boolean weekEnd = jour == DayOfWeek.SATURDAY || jour == DayOfWeek.SUNDAY;
+                Label vide = new Label(weekEnd ? "Pas de cours" : "Journée libre");
+                vide.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-style: italic; -fx-font-size: 12;");
+                vide.setPrefWidth(largeurColonneJour);
+                vide.setAlignment(Pos.CENTER);
+                vide.setMouseTransparent(true);
+                vide.setLayoutX(jourIndex * largeurColonneJour);
+                vide.setLayoutY(hauteur / 2 - 8);
+                pane.getChildren().add(vide);
+            }
         }
 
         return pane;
     }
 
-
     private void ajouterCellulesCliquables(Pane pane) {
         List<PlageHoraire> blocs = new ArrayList<>(emploiDuTemps.getParametres().getBlocs());
         blocs.sort(Comparator.comparing(PlageHoraire::getDebut));
         int debutGrille = toMinutes(heureDebutGrille);
-        String pourcentageAlternance = emploiDuTemps.getParametres().isThemeSombre() ? "-15%" : "15%";
+        boolean guidesVisibles = emploiDuTemps.getParametres().isAfficherGuidesBlocs();
+        String pourcentageAlternance = emploiDuTemps.getParametres().isThemeSombre() ? "-25%" : "25%";
+        double opaciteRepos = guidesVisibles ? 0.6 : 0;
+        double opaciteSurvol = guidesVisibles ? 0.9 : 0.35;
         for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
             DayOfWeek jour = joursAffiches[jourIndex];
             for (int i = 0; i < blocs.size(); i++) {
@@ -337,9 +362,9 @@ public class EmploiDuTempsPane extends BorderPane {
                 cellule.setCursor(Cursor.HAND);
                 cellule.setStyle("-fx-background-color: " + (i % 2 == 1
                         ? "derive(-color-accent-subtle, " + pourcentageAlternance + ");" : "-color-accent-subtle;"));
-                cellule.setOpacity(0.35);
-                cellule.setOnMouseEntered(e -> cellule.setOpacity(0.7));
-                cellule.setOnMouseExited(e -> cellule.setOpacity(0.35));
+                cellule.setOpacity(opaciteRepos);
+                cellule.setOnMouseEntered(e -> cellule.setOpacity(opaciteSurvol));
+                cellule.setOnMouseExited(e -> cellule.setOpacity(opaciteRepos));
                 cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, bloc.getDebut(), bloc.getFin()));
                 pane.getChildren().add(cellule);
             }

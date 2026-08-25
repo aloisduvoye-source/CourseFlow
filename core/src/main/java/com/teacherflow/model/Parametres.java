@@ -42,6 +42,7 @@ public class Parametres {
     private Map<String, String> couleursTags = new LinkedHashMap<>();
     private UUID coursDefautId;
     private boolean themeSombre = false;
+    private boolean afficherGuidesBlocs = true;
     private LocalDate ancrageSemaineA;
 
     private static List<PlageHoraire> blocsParDefaut() {
@@ -140,6 +141,14 @@ public class Parametres {
 
     public void setThemeSombre(boolean themeSombre) {
         this.themeSombre = themeSombre;
+    }
+
+    public boolean isAfficherGuidesBlocs() {
+        return afficherGuidesBlocs;
+    }
+
+    public void setAfficherGuidesBlocs(boolean afficherGuidesBlocs) {
+        this.afficherGuidesBlocs = afficherGuidesBlocs;
     }
 
     public LocalDate getAncrageSemaineA() {
