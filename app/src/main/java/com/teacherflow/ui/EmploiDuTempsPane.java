@@ -189,11 +189,26 @@ public class EmploiDuTempsPane extends BorderPane {
     private void mettreAJourEntetes() {
         ligneEntetes.getChildren().clear();
         ligneEntetes.getChildren().add(espace(LARGEUR_COLONNE_HEURES));
+        LocalDate lundiCourant = LocalDate.now().with(DayOfWeek.MONDAY);
+        boolean aujourdhuiAffiche = indexDuJour(LocalDate.now().getDayOfWeek()) >= 0;
         for (DayOfWeek jour : joursAffiches) {
-            Label enTete = new Label(NomsJours.nom(jour));
-            enTete.setPrefWidth(largeurColonneJour);
+            boolean estAujourdhui = aujourdhuiAffiche && jour == LocalDate.now().getDayOfWeek();
+
+            Label nomJour = new Label(NomsJours.nom(jour));
+            nomJour.setStyle("-fx-font-weight: bold; -fx-font-size: 13;"
+                    + (estAujourdhui ? " -fx-text-fill: -color-accent-emphasis;" : ""));
+
+            Label date = new Label(lundiCourant.plusDays(jour.getValue() - 1)
+                    .format(java.time.format.DateTimeFormatter.ofPattern("d/M")));
+            date.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 11;");
+
+            VBox enTete = new VBox(2, nomJour, date);
             enTete.setAlignment(Pos.CENTER);
-            enTete.setStyle("-fx-font-weight: bold;");
+            enTete.setPrefWidth(largeurColonneJour);
+            enTete.setPadding(new Insets(8, 4, 8, 4));
+            enTete.setStyle("-fx-background-color: " + (estAujourdhui ? "-color-accent-subtle" : "-color-bg-subtle")
+                    + "; -fx-background-radius: 6 6 0 0; -fx-border-color: -color-border-default;"
+                    + " -fx-border-width: 1 1 0 1; -fx-border-radius: 6 6 0 0;");
             ligneEntetes.getChildren().add(enTete);
         }
     }
@@ -297,11 +312,18 @@ public class EmploiDuTempsPane extends BorderPane {
 
         ajouterCellulesCliquables(pane);
 
-        emploiDuTemps.getCreneaux().stream()
+        List<Creneau> creneauxVisibles = emploiDuTemps.getCreneaux().stream()
                 .filter(c -> indexDuJour(c.getJour()) >= 0)
                 .filter(c -> chevaucheGrille(c.getHeureDebut(), c.getHeureFin()))
                 .filter(c -> c.correspondA(semaineAffichee))
-                .forEach(c -> pane.getChildren().add(new BlocCreneau(c)));
+                .collect(Collectors.toList());
+        creneauxVisibles.forEach(c -> pane.getChildren().add(new BlocCreneau(c)));
+
+        for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
+            DayOfWeek jour = joursAffiches[jourIndex];
+            boolean journeeVide = creneauxVisibles.stream().noneMatch(c -> c.getJour() == jour);
+            
+        }
 
         return pane;
     }
@@ -311,8 +333,8 @@ public class EmploiDuTempsPane extends BorderPane {
      * (ex. 9h-10h puis 10h20-11h20), plutôt qu'un unique clic-n'importe-où sur toute la
      * grille : cela limite les points de création possibles à un ensemble prévisible de
      * blocs, identique chaque jour. Le déplacement/redimensionnement d'un créneau existant
-     * (glisser-déposer) n'est pas concerné et reste libre. Un bloc sur deux (par ordre
-     * chronologique) est légèrement plus sombre, pour distinguer deux blocs collés bout à bout.
+     * (glisser-déposer) n'est pas concerné et reste libre. La zone reste transparente au repos
+     * et ne se colore qu'au survol, pour ne pas casser le fond blanc de la grille.
      */
     private void ajouterCellulesCliquables(Pane pane) {
         List<PlageHoraire> blocs = new ArrayList<>(emploiDuTemps.getParametres().getBlocs());
@@ -333,9 +355,11 @@ public class EmploiDuTempsPane extends BorderPane {
                 cellule.setLayoutY(MARGE_VERTICALE + minuteDebut * PIXELS_PAR_MINUTE);
                 cellule.setPrefSize(largeurColonneJour, (minuteFin - minuteDebut) * PIXELS_PAR_MINUTE);
                 cellule.setCursor(Cursor.HAND);
-                cellule.setStyle(i % 2 == 1
-                        ? "-fx-background-color: derive(-color-accent-subtle, -20%);"
-                        : "-fx-background-color: -color-accent-subtle;");
+                String styleRepos = "-fx-background-color: transparent;";
+                String styleSurvol = "-fx-background-color: -color-accent-subtle;";
+                cellule.setStyle(styleRepos);
+                cellule.setOnMouseEntered(e -> cellule.setStyle(styleSurvol));
+                cellule.setOnMouseExited(e -> cellule.setStyle(styleRepos));
                 cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, bloc.getDebut(), bloc.getFin()));
                 pane.getChildren().add(cellule);
             }
@@ -372,7 +396,9 @@ public class EmploiDuTempsPane extends BorderPane {
     private final class BlocCreneau extends StackPane {
 
         private final Creneau creneau;
-        private final Label libelle = new Label();
+        private final Label titre = new Label();
+        private final Label meta = new Label();
+        private final VBox contenu = new VBox(2, titre, meta);
 
         private int dayIndexInitial;
         private int minutesDebutInitial;
@@ -386,13 +412,17 @@ public class EmploiDuTempsPane extends BorderPane {
         BlocCreneau(Creneau creneau) {
             this.creneau = creneau;
 
-            libelle.setWrapText(true);
-            libelle.setMouseTransparent(true);
-            libelle.setStyle("-fx-text-fill: white; -fx-font-size: 11;");
-            getChildren().add(libelle);
+            titre.setWrapText(true);
+            titre.setMouseTransparent(true);
+            titre.setStyle("-fx-text-fill: white; -fx-font-size: 12; -fx-font-weight: bold;");
+            meta.setWrapText(true);
+            meta.setMouseTransparent(true);
+            meta.setStyle("-fx-text-fill: rgba(255,255,255,0.88); -fx-font-size: 10.5;");
+            contenu.setMouseTransparent(true);
+            getChildren().add(contenu);
             setAlignment(Pos.TOP_LEFT);
-            setPadding(new Insets(3, 2, 2, 4));
-            setPrefWidth(largeurColonneJour - 4);
+            setPadding(new Insets(6, 6, 6, 8));
+            setPrefWidth(largeurColonneJour - 6);
             setStyle(styleFond());
 
             actualiser(Math.max(0, indexDuJour(creneau.getJour())),
@@ -408,7 +438,8 @@ public class EmploiDuTempsPane extends BorderPane {
         private String styleFond() {
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : "#95a5a6";
-            return "-fx-background-color: " + couleur + ";";
+            return "-fx-background-color: " + couleur + "; -fx-background-radius: 6;"
+                    + " -fx-border-color: derive(" + couleur + ", -15%); -fx-border-width: 1; -fx-border-radius: 6;";
         }
 
         private void actualiser(int dayIndex, int debutMinutes, int finMinutes) {
@@ -417,24 +448,25 @@ public class EmploiDuTempsPane extends BorderPane {
             int grilleFin = toMinutes(heureFinGrille);
             int debutAffiche = clamp(debutMinutes, grilleDebut, grilleFin);
             int finAffiche = clamp(finMinutes, grilleDebut, grilleFin);
-            setLayoutX(dayIndex * largeurColonneJour + 2);
+            setLayoutX(dayIndex * largeurColonneJour + 3);
             setLayoutY(MARGE_VERTICALE + (debutAffiche - grilleDebut) * PIXELS_PAR_MINUTE);
             setPrefHeight(Math.max(DUREE_MIN_MINUTES, finAffiche - debutAffiche) * PIXELS_PAR_MINUTE);
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String nomCours = cours != null ? cours.getNom() : "(cours supprimé)";
+            titre.setText(nomCours);
 
-            StringBuilder texte = new StringBuilder(nomCours);
+            StringBuilder texte = new StringBuilder();
+            texte.append(minutesVersHeure(debutMinutes)).append(" - ").append(minutesVersHeure(finMinutes));
             if (creneau.getSalle() != null && !creneau.getSalle().isBlank()) {
-                texte.append(" · ").append(creneau.getSalle());
+                texte.append('\n').append(creneau.getSalle());
             }
-            texte.append('\n').append(minutesVersHeure(debutMinutes)).append(" - ").append(minutesVersHeure(finMinutes));
             if (creneau.getTypeSemaine() != TypeSemaine.TOUTES) {
                 texte.append(" (").append(creneau.getTypeSemaine()).append(')');
             }
             if (creneau.getDescription() != null && !creneau.getDescription().isBlank()) {
                 texte.append('\n').append(creneau.getDescription());
             }
-            libelle.setText(texte.toString());
+            meta.setText(texte.toString());
         }
 
         private ModeInteraction determinerMode(double y) {
