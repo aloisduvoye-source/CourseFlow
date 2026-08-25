@@ -141,10 +141,6 @@ public class EmploiDuTempsPane extends BorderPane {
         }
     }
 
-    /**
-     * Capture un instantané profond des créneaux avant une mutation, pour pouvoir l'annuler
-     * (Ctrl+Z). Toute nouvelle action après un "annuler" invalide la pile "rétablir".
-     */
     private void enregistrerAvantModification() {
         pileAnnuler.push(copierCreneaux());
         pileRetablir.clear();
@@ -219,12 +215,6 @@ public class EmploiDuTempsPane extends BorderPane {
         return region;
     }
 
-    /**
-     * Reconstruit entièrement la grille à partir de l'état courant de l'{@link EmploiDuTemps},
-     * en recalculant au passage la largeur des colonnes pour occuper toute la largeur
-     * disponible du panneau (avec un minimum lisible, au-delà duquel un défilement horizontal
-     * prend le relais).
-     */
     public void rafraichir() {
         Parametres parametres = emploiDuTemps.getParametres();
         List<DayOfWeek> jours = parametres.getJoursAffiches();
@@ -272,11 +262,7 @@ public class EmploiDuTempsPane extends BorderPane {
         return pane;
     }
 
-    /**
-     * Zone de dessin unique regroupant les 6 jours affichés, plutôt qu'un panneau par jour :
-     * cela permet à un {@link BlocCreneau} de se déplacer librement en X (jour) et pas
-     * seulement en Y (heure) lors d'un glisser.
-     */
+   
     private Pane construireGrilleUnique(double hauteur) {
         double largeurTotale = joursAffiches.length * largeurColonneJour;
         Pane pane = new Pane();
@@ -328,18 +314,12 @@ public class EmploiDuTempsPane extends BorderPane {
         return pane;
     }
 
-    /**
-     * Ajoute une zone cliquable par jour pour chaque bloc horaire défini dans les paramètres
-     * (ex. 9h-10h puis 10h20-11h20), plutôt qu'un unique clic-n'importe-où sur toute la
-     * grille : cela limite les points de création possibles à un ensemble prévisible de
-     * blocs, identique chaque jour. Le déplacement/redimensionnement d'un créneau existant
-     * (glisser-déposer) n'est pas concerné et reste libre. La zone reste transparente au repos
-     * et ne se colore qu'au survol, pour ne pas casser le fond blanc de la grille.
-     */
+
     private void ajouterCellulesCliquables(Pane pane) {
         List<PlageHoraire> blocs = new ArrayList<>(emploiDuTemps.getParametres().getBlocs());
         blocs.sort(Comparator.comparing(PlageHoraire::getDebut));
         int debutGrille = toMinutes(heureDebutGrille);
+        String pourcentageAlternance = emploiDuTemps.getParametres().isThemeSombre() ? "-15%" : "15%";
         for (int jourIndex = 0; jourIndex < joursAffiches.length; jourIndex++) {
             DayOfWeek jour = joursAffiches[jourIndex];
             for (int i = 0; i < blocs.size(); i++) {
@@ -355,11 +335,11 @@ public class EmploiDuTempsPane extends BorderPane {
                 cellule.setLayoutY(MARGE_VERTICALE + minuteDebut * PIXELS_PAR_MINUTE);
                 cellule.setPrefSize(largeurColonneJour, (minuteFin - minuteDebut) * PIXELS_PAR_MINUTE);
                 cellule.setCursor(Cursor.HAND);
-                String styleRepos = "-fx-background-color: transparent;";
-                String styleSurvol = "-fx-background-color: -color-accent-subtle;";
-                cellule.setStyle(styleRepos);
-                cellule.setOnMouseEntered(e -> cellule.setStyle(styleSurvol));
-                cellule.setOnMouseExited(e -> cellule.setStyle(styleRepos));
+                cellule.setStyle("-fx-background-color: " + (i % 2 == 1
+                        ? "derive(-color-accent-subtle, " + pourcentageAlternance + ");" : "-color-accent-subtle;"));
+                cellule.setOpacity(0.35);
+                cellule.setOnMouseEntered(e -> cellule.setOpacity(0.7));
+                cellule.setOnMouseExited(e -> cellule.setOpacity(0.35));
                 cellule.setOnMouseClicked(e -> ouvrirDialogueCreneau(null, jour, bloc.getDebut(), bloc.getFin()));
                 pane.getChildren().add(cellule);
             }
@@ -370,11 +350,6 @@ public class EmploiDuTempsPane extends BorderPane {
         return (int) Duration.between(heureDebutGrille, heureFinGrille).toMinutes();
     }
 
-    /**
-     * @return true si [debut, fin) recouvre au moins partiellement la plage horaire actuelle
-     * de la grille (utilisé pour ne pas afficher un créneau devenu totalement invisible après
-     * un rétrécissement de cette plage dans les paramètres).
-     */
     private boolean chevaucheGrille(LocalTime debut, LocalTime fin) {
         return fin.isAfter(heureDebutGrille) && debut.isBefore(heureFinGrille);
     }
@@ -388,11 +363,6 @@ public class EmploiDuTempsPane extends BorderPane {
         return -1;
     }
 
-    /**
-     * Un créneau affiché dans la grille : déplaçable (glisser le corps) et redimensionnable
-     * (glisser le bord haut ou bas), par pas de {@link #pasMinutes} minutes. Un clic
-     * sans déplacement ouvre la boîte de dialogue d'édition.
-     */
     private final class BlocCreneau extends StackPane {
 
         private final Creneau creneau;
