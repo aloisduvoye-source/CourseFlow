@@ -483,7 +483,7 @@ public class EmploiDuTempsPane extends BorderPane {
 
         private String styleFond() {
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
-            String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : "#95a5a6";
+            String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : Couleurs.COURS_SANS_COULEUR;
             return "-fx-background-color: " + couleur + "; -fx-background-radius: 6;"
                     + " -fx-border-color: derive(" + couleur + ", -15%); -fx-border-width: 1; -fx-border-radius: 6;";
         }
@@ -681,7 +681,7 @@ public class EmploiDuTempsPane extends BorderPane {
         Runnable actualiserBanniere = () -> {
             Cours coursChoisi = choixCours.getValue();
             String couleur = coursChoisi != null && coursChoisi.getCouleur() != null
-                    ? coursChoisi.getCouleur() : "#95a5a6";
+                    ? coursChoisi.getCouleur() : Couleurs.COURS_SANS_COULEUR;
             banniere.setStyle("-fx-background-color: " + couleur + ";");
             LocalTime debutAffiche = choixDebut.getValue() != null ? choixDebut.getValue() : heureDebutParDefaut;
             LocalTime finAffichee = choixFin.getValue() != null ? choixFin.getValue() : heureFinParDefaut;

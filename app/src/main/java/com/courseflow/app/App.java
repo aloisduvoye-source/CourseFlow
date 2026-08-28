@@ -4,6 +4,7 @@ import atlantafx.base.theme.PrimerDark;
 import atlantafx.base.theme.PrimerLight;
 import com.courseflow.model.EmploiDuTemps;
 import com.courseflow.persistence.DataStore;
+import com.courseflow.persistence.DonneesIllisiblesException;
 import com.courseflow.ui.AccueilPane;
 import com.courseflow.ui.CoursGestionPane;
 import com.courseflow.ui.EmploiDuTempsPane;
@@ -35,6 +36,7 @@ public class App extends Application {
     private final DataStore dataStore = new DataStore();
     private EmploiDuTemps emploiDuTemps;
     private Scene scene;
+    private boolean sauvegardeAutorisee = true;
 
     @Override
     public void start(Stage stage) {
@@ -170,15 +172,30 @@ public class App extends Application {
     private EmploiDuTemps chargerDonnees() {
         try {
             return dataStore.charger();
+        } catch (DonneesIllisiblesException e) {
+            // Le fichier a été mis de côté par le DataStore : démarrer vide est sans danger pour
+            // l'original, et l'utilisateur peut tenter de le récupérer à la main.
+            afficherErreur("Fichier de données illisible",
+                    "Le fichier " + dataStore.getFichierDonnees() + " n'a pas pu être lu.\n\n"
+                            + "Il a été mis de côté sous :\n" + e.getFichierQuarantaine() + "\n\n"
+                            + "CourseFlow démarre avec des données vides.");
+            return new EmploiDuTemps();
         } catch (IOException e) {
+            // Erreur d'accès disque : le fichier existe peut-être toujours et est peut-être
+            // valide. On bloque les sauvegardes pour ne pas l'écraser avec un modèle vide.
+            sauvegardeAutorisee = false;
             afficherErreur("Chargement impossible",
                     "Les données n'ont pas pu être chargées depuis " + dataStore.getFichierDonnees()
-                            + ".\n" + e.getMessage());
+                            + ".\n" + e.getMessage()
+                            + "\n\nLes modifications ne seront pas enregistrées pendant cette session.");
             return new EmploiDuTemps();
         }
     }
 
     private void sauvegarder() {
+        if (!sauvegardeAutorisee) {
+            return;
+        }
         try {
             dataStore.sauvegarder(emploiDuTemps);
         } catch (IOException e) {

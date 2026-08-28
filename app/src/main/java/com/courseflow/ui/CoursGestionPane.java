@@ -55,7 +55,6 @@ import java.util.UUID;
  */
 public class CoursGestionPane extends BorderPane {
 
-    private static final String COULEUR_PAR_DEFAUT = "#4338ca";
 
     private final EmploiDuTemps emploiDuTemps;
     private final Runnable surChangement;
@@ -214,7 +213,7 @@ public class CoursGestionPane extends BorderPane {
 
         champNom.setText(cours.getNom());
         selecteurCouleur.setValue(Color.web(
-                cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT));
+                cours.getCouleur() != null ? cours.getCouleur() : Couleurs.COURS_SANS_COULEUR));
         rechercheFichiers.clear();
         tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(cours));
         rafraichirDossiersReferences(cours);
@@ -679,7 +678,7 @@ public class CoursGestionPane extends BorderPane {
                 setGraphic(null);
                 return;
             }
-            pastille.setFill(Color.web(cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT));
+            pastille.setFill(Color.web(cours.getCouleur() != null ? cours.getCouleur() : Couleurs.COURS_SANS_COULEUR));
             String nom = cours.getNom();
             libelle.setText(nom == null || nom.isBlank() ? "(sans nom)" : nom);
             setGraphic(ligne);

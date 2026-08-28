@@ -10,12 +10,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DataStoreTest {
@@ -122,5 +125,57 @@ class DataStoreTest {
         DossierReference referenceRechargee = recharge.getCours().get(0).getDossiersReferences().get(0);
         assertEquals("/docs/maths", referenceRechargee.getChemin());
         assertEquals(List.of("/docs/maths/exercices.pdf"), referenceRechargee.getFichiersImportes());
+    }
+
+    @Test
+    void chargerUnFichierCorrompuLeMetEnQuarantaineSansLeSupprimer(@TempDir Path repertoireTemp) throws IOException {
+        Path fichier = repertoireTemp.resolve("data.json");
+        Files.writeString(fichier, "{ ceci n'est pas du JSON valide");
+        DataStore dataStore = new DataStore(fichier);
+
+        DonneesIllisiblesException erreur = assertThrows(DonneesIllisiblesException.class, dataStore::charger);
+
+        assertFalse(Files.exists(fichier), "le fichier fautif ne doit plus être à l'emplacement normal");
+        assertTrue(Files.exists(erreur.getFichierQuarantaine()), "il doit avoir été renommé, pas supprimé");
+        assertEquals("{ ceci n'est pas du JSON valide", Files.readString(erreur.getFichierQuarantaine()));
+    }
+
+    @Test
+    void chargerTolereUnChampInconnu(@TempDir Path repertoireTemp) throws IOException {
+        Path fichier = repertoireTemp.resolve("data.json");
+        Files.writeString(fichier, "{\"cours\":[],\"creneaux\":[],\"champDuFutur\":42}");
+
+        EmploiDuTemps recharge = new DataStore(fichier).charger();
+
+        assertTrue(recharge.getCours().isEmpty());
+    }
+
+    @Test
+    void sauvegarderFaitTournerUneCopieDeSecours(@TempDir Path repertoireTemp) throws IOException {
+        Path fichier = repertoireTemp.resolve("data.json");
+        DataStore dataStore = new DataStore(fichier);
+
+        EmploiDuTemps premier = new EmploiDuTemps();
+        premier.ajouterCours("Premier", "#3498db");
+        dataStore.sauvegarder(premier);
+
+        EmploiDuTemps second = new EmploiDuTemps();
+        second.ajouterCours("Second", "#e67e22");
+        dataStore.sauvegarder(second);
+
+        Path copie = repertoireTemp.resolve("data.json.bak1");
+        assertTrue(Files.exists(copie), "une copie .bak1 doit exister après la 2e sauvegarde");
+        assertEquals("Second", dataStore.charger().getCours().get(0).getNom());
+        assertEquals("Premier", new DataStore(copie).charger().getCours().get(0).getNom());
+    }
+
+    @Test
+    void sauvegarderNeLaissePasDeFichierTemporaire(@TempDir Path repertoireTemp) throws IOException {
+        Path fichier = repertoireTemp.resolve("data.json");
+        DataStore dataStore = new DataStore(fichier);
+
+        dataStore.sauvegarder(new EmploiDuTemps());
+
+        assertFalse(Files.exists(repertoireTemp.resolve("data.json.tmp")));
     }
 }

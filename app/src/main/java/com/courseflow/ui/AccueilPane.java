@@ -52,7 +52,6 @@ public class AccueilPane extends BorderPane {
     private static final double TAILLE_VIGNETTE = 40;
     private static final double LARGEUR_COLONNE = 720;
     private static final int SEUIL_FICHIERS_REPLIES = 3;
-    private static final String COULEUR_PAR_DEFAUT = "#95a5a6";
     private static final DateTimeFormatter FORMAT_DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH);
 
     private final EmploiDuTemps emploiDuTemps;
@@ -170,7 +169,7 @@ public class AccueilPane extends BorderPane {
 
     private VBox construireCarteCreneau(Creneau creneau, boolean enCours) {
         Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
-        String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT;
+        String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : Couleurs.COURS_SANS_COULEUR;
 
         Label libelleHeure = new Label(creneau.getHeureDebut() + " - " + creneau.getHeureFin());
         libelleHeure.setStyle("-fx-font-family: monospace; -fx-text-fill: " + couleur + "; -fx-font-weight: bold;");
