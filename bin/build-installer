@@ -42,7 +42,8 @@ jlink \
     --output target/runtime \
     --strip-debug \
     --no-header-files \
-    --no-man-pages
+    --no-man-pages \
+    --compress zip-9
 
 VERSION="1.0.0"
 DESCRIPTION="Organise les fichiers de cours autour de l'emploi du temps"
