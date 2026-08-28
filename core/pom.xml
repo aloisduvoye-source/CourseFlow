@@ -5,16 +5,16 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.teacherflow</groupId>
-        <artifactId>teacherflow-parent</artifactId>
+        <groupId>com.courseflow</groupId>
+        <artifactId>courseflow-parent</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>teacherflow-core</artifactId>
+    <artifactId>courseflow-core</artifactId>
     <packaging>jar</packaging>
 
     <!--
-    Module com.teacherflow.core : modèle, persistance, et la commande "lecture" (CLI headless).
+    Module com.courseflow.core : modèle, persistance, et la commande "lecture" (CLI headless).
     Volontairement sans aucune dépendance JavaFX/AtlantaFX, pour que "lecture" démarre sans avoir
     à résoudre le module graphique (voir la commande "app" pour l'interface).
     -->

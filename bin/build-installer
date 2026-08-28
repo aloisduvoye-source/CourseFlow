@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Construit un paquet natif installable de TeacherFlow (jpackage), avec deux points d'entrée
-# dans la même image : "teacherflow" (interface graphique) et "lecture" (CLI, équivalent packagé
+# Construit un paquet natif installable de CourseFlow (jpackage), avec deux points d'entrée
+# dans la même image : "courseflow" (interface graphique) et "lecture" (CLI, équivalent packagé
 # de bin/lecture). Produit dans target/dist/ :
-#   - un app-image portable (teacherflow/), utilisable sans installation ;
+#   - un app-image portable (courseflow/), utilisable sans installation ;
 #   - un paquet .deb installable via dpkg.
 # Usage : bin/build-installer
 
@@ -26,7 +26,7 @@ fi
 echo "==> Compilation et tests"
 # "install" (pas juste "test") : les étapes suivantes lancent des objectifs Maven isolés
 # (dependency:copy-dependencies sur le module "app") qui doivent pouvoir résoudre
-# teacherflow-core depuis le dépôt local, pas seulement depuis le résultat du reactor en cours.
+# courseflow-core depuis le dépôt local, pas seulement depuis le résultat du reactor en cours.
 mvn -q clean install
 mkdir -p target
 
@@ -38,7 +38,7 @@ echo "==> Construction de l'image d'exécution (jlink)"
 rm -rf target/runtime
 jlink \
     --module-path "core/target/classes:app/target/classes:target/modules:$JAVA_HOME/jmods" \
-    --add-modules com.teacherflow.app \
+    --add-modules com.courseflow.app \
     --output target/runtime \
     --strip-debug \
     --no-header-files \
@@ -53,11 +53,12 @@ rm -rf target/dist
 jpackage \
     --type app-image \
     --runtime-image target/runtime \
-    --name teacherflow \
+    --name courseflow \
     --app-version "$VERSION" \
-    --vendor TeacherFlow \
+    --vendor CourseFlow \
     --description "$DESCRIPTION" \
-    --module com.teacherflow.app/com.teacherflow.app.App \
+    --icon packaging/icon/courseflow.png \
+    --module com.courseflow.app/com.courseflow.app.App \
     --add-launcher lecture=packaging/lecture-launcher.properties \
     --dest target/dist
 
@@ -65,24 +66,25 @@ jpackage \
 # (~1-1,3 s perdues à chaque lancement, mesuré au strace) : inutile pour une commande CLI censée
 # être instantanée. On le remplace par un script qui appelle directement le runtime packagé.
 echo "==> Remplacement du lanceur lecture par un appel direct au runtime"
-cat > target/dist/teacherflow/bin/lecture << 'SCRIPT_LECTURE_FAST'
+cat > target/dist/courseflow/bin/lecture << 'SCRIPT_LECTURE_FAST'
 #!/bin/sh
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 exec "$SCRIPT_DIR/../lib/runtime/bin/java" \
-    -Dteacherflow.bindir="$SCRIPT_DIR" \
-    -m com.teacherflow.core/com.teacherflow.cli.Lecture "$@"
+    -Dcourseflow.bindir="$SCRIPT_DIR" \
+    -m com.courseflow.core/com.courseflow.cli.Lecture "$@"
 SCRIPT_LECTURE_FAST
-chmod 755 target/dist/teacherflow/bin/lecture
+chmod 755 target/dist/courseflow/bin/lecture
 
 echo "==> Construction du paquet .deb (jpackage)"
 jpackage \
     --type deb \
     --runtime-image target/runtime \
-    --name teacherflow \
+    --name courseflow \
     --app-version "$VERSION" \
-    --vendor TeacherFlow \
+    --vendor CourseFlow \
     --description "$DESCRIPTION" \
-    --module com.teacherflow.app/com.teacherflow.app.App \
+    --icon packaging/icon/courseflow.png \
+    --module com.courseflow.app/com.courseflow.app.App \
     --add-launcher lecture=packaging/lecture-launcher.properties \
     --linux-shortcut \
     --linux-app-category Education \

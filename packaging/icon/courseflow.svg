@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- PLACEHOLDER - a remplacer par le design definitif. Voir README (section "Icone"). -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#3b5bdb"/>
+  <!-- deux "creneaux" empiles, clin d'oeil a l'emploi du temps -->
+  <rect x="128" y="150" width="256" height="86" rx="20" fill="#ffffff" opacity="0.95"/>
+  <rect x="128" y="276" width="180" height="86" rx="20" fill="#ffffff" opacity="0.6"/>
+  <text x="256" y="470" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="80"
+        font-weight="700" fill="#ffffff" text-anchor="middle">CF</text>
+</svg>

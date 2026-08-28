@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Rasterise l'icone vectorielle (packaging/icon/courseflow.svg) vers les PNG utilises par
+# l'application JavaFX (icone de fenetre) et par jpackage (lanceur natif).
+# A relancer apres avoir remplace le SVG par le design definitif.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+SVG=packaging/icon/courseflow.svg
+PNG_PACKAGING=packaging/icon/courseflow.png
+PNG_APP=app/src/main/resources/com/courseflow/app/icon.png
+
+mkdir -p "$(dirname "$PNG_APP")"
+
+convert -background none -density 384 "$SVG" -resize 512x512 "$PNG_PACKAGING"
+cp "$PNG_PACKAGING" "$PNG_APP"
+
+echo "Genere :"
+echo "  $PNG_PACKAGING"
+echo "  $PNG_APP"

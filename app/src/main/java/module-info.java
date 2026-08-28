@@ -1,10 +1,10 @@
-module com.teacherflow.app {
-    requires com.teacherflow.core;
+module com.courseflow.app {
+    requires com.courseflow.core;
     requires javafx.controls;
     requires javafx.fxml;
     requires atlantafx.base;
 
-    opens com.teacherflow.app to javafx.fxml;
+    opens com.courseflow.app to javafx.fxml;
 
-    exports com.teacherflow.app;
+    exports com.courseflow.app;
 }

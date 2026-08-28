@@ -39,5 +39,5 @@ if [ ! -f "$CLASSPATH_CACHE" ] || [ pom.xml -nt "$CLASSPATH_CACHE" ] || [ core/p
 fi
 
 exec java --module-path "core/target/classes:$(cat "$CLASSPATH_CACHE")" \
-    --add-modules com.teacherflow.core \
-    --module com.teacherflow.core/com.teacherflow.cli.Lecture "$@"
+    --add-modules com.courseflow.core \
+    --module com.courseflow.core/com.courseflow.cli.Lecture "$@"
