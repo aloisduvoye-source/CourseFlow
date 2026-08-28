@@ -36,18 +36,9 @@ public class App extends Application {
         emploiDuTemps = chargerDonnees();
         appliquerTheme(emploiDuTemps.getParametres().isThemeSombre());
 
-        AccueilPane vueAccueil = new AccueilPane(emploiDuTemps);
         CoursGestionPane vueCours = new CoursGestionPane(emploiDuTemps, this::sauvegarder);
         EmploiDuTempsPane vueEmploiDuTemps = new EmploiDuTempsPane(emploiDuTemps, this::sauvegarder);
         ParametresPane vueParametres = new ParametresPane(emploiDuTemps, dataStore.getFichierDonnees(), this::sauvegarder);
-
-        vueCours.setVisible(false);
-        vueCours.setManaged(false);
-        vueEmploiDuTemps.setVisible(false);
-        vueEmploiDuTemps.setManaged(false);
-        vueParametres.setVisible(false);
-        vueParametres.setManaged(false);
-        StackPane contenu = new StackPane(vueAccueil, vueCours, vueEmploiDuTemps, vueParametres);
 
         ToggleGroup groupeNavigation = new ToggleGroup();
         ToggleButton boutonAccueil = new ToggleButton("Accueil");
@@ -66,6 +57,21 @@ public class App extends Application {
         ToggleButton boutonParametres = new ToggleButton("Paramètres");
         boutonParametres.setToggleGroup(groupeNavigation);
         boutonParametres.setMaxWidth(Double.MAX_VALUE);
+
+        // Le raccourci "Modifier" de l'Accueil bascule sur l'onglet Emploi du temps (comme un
+        // vrai clic, via fire()) avant d'ouvrir la boîte de dialogue d'édition du créneau.
+        AccueilPane vueAccueil = new AccueilPane(emploiDuTemps, creneau -> {
+            boutonEmploiDuTemps.fire();
+            vueEmploiDuTemps.ouvrirEdition(creneau);
+        });
+
+        vueCours.setVisible(false);
+        vueCours.setManaged(false);
+        vueEmploiDuTemps.setVisible(false);
+        vueEmploiDuTemps.setManaged(false);
+        vueParametres.setVisible(false);
+        vueParametres.setManaged(false);
+        StackPane contenu = new StackPane(vueAccueil, vueCours, vueEmploiDuTemps, vueParametres);
 
         boutonAccueil.setOnAction(e -> {
             afficherVue(vueAccueil, vueAccueil, vueCours, vueEmploiDuTemps, vueParametres);

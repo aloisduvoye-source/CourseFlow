@@ -135,7 +135,13 @@ public class CoursGestionPane extends BorderPane {
 
         listeFichiersCoursDefaut.setPrefHeight(140);
         listeFichiersCoursDefaut.setCellFactory(CheckBoxListCell.forListView(this::proprieteFichierLie));
-        panneauCoursDefaut.setContent(listeFichiersCoursDefaut);
+
+        Button boutonToutCocherDefaut = new Button("Tout cocher");
+        boutonToutCocherDefaut.setOnAction(e -> toutLierFichiersCoursDefaut(true));
+        Button boutonToutDecocherDefaut = new Button("Tout décocher");
+        boutonToutDecocherDefaut.setOnAction(e -> toutLierFichiersCoursDefaut(false));
+        HBox boutonsCoursDefaut = new HBox(8, boutonToutCocherDefaut, boutonToutDecocherDefaut);
+        panneauCoursDefaut.setContent(new VBox(4, listeFichiersCoursDefaut, boutonsCoursDefaut));
         panneauCoursDefaut.setExpanded(false);
 
         listeFichiers.setCellFactory(vue -> new FichierCell());
@@ -276,12 +282,20 @@ public class CoursGestionPane extends BorderPane {
         if (fichiersTrouves.isEmpty()) {
             contenu.getChildren().add(new Label("(aucun fichier trouvé)"));
         } else {
+            List<CheckBox> casesFichiers = new ArrayList<>();
             for (File fichier : fichiersTrouves) {
                 CheckBox caseFichier = new CheckBox(fichier.getName());
                 caseFichier.setSelected(reference.getFichiersImportes().contains(fichier.getAbsolutePath()));
                 caseFichier.setOnAction(e -> toggleFichierDossierReference(cours, reference, fichier, caseFichier.isSelected()));
+                casesFichiers.add(caseFichier);
                 contenu.getChildren().add(caseFichier);
             }
+
+            Button boutonToutCocher = new Button("Tout cocher");
+            boutonToutCocher.setOnAction(e -> toutCocherFichiersDossierReference(cours, reference, fichiersTrouves, casesFichiers, true));
+            Button boutonToutDecocher = new Button("Tout décocher");
+            boutonToutDecocher.setOnAction(e -> toutCocherFichiersDossierReference(cours, reference, fichiersTrouves, casesFichiers, false));
+            contenu.getChildren().add(new HBox(8, boutonToutCocher, boutonToutDecocher));
         }
 
         Button boutonDelier = new Button("Délier ce dossier (retire aussi ses fichiers importés)");
@@ -289,6 +303,18 @@ public class CoursGestionPane extends BorderPane {
         contenu.getChildren().add(boutonDelier);
 
         return contenu;
+    }
+
+    /**
+     * Importe ou retire en une fois tous les fichiers trouvés dans un dossier référencé, plutôt
+     * que de cocher/décocher chaque case une par une.
+     */
+    private void toutCocherFichiersDossierReference(Cours cours, DossierReference reference,
+            List<File> fichiersTrouves, List<CheckBox> casesFichiers, boolean coche) {
+        for (int i = 0; i < fichiersTrouves.size(); i++) {
+            casesFichiers.get(i).setSelected(coche);
+            toggleFichierDossierReference(cours, reference, fichiersTrouves.get(i), coche);
+        }
     }
 
     private void toggleFichierDossierReference(Cours cours, DossierReference reference, File fichier, boolean coche) {
@@ -317,6 +343,27 @@ public class CoursGestionPane extends BorderPane {
                 caseCoursDefaut.isSelected() ? selectionne.getId() : null);
         notifierChangement();
         afficherDetails(selectionne);
+    }
+
+    /**
+     * Lie ou délie en une fois tous les fichiers du cours par défaut affichés dans
+     * {@link #listeFichiersCoursDefaut}, pour éviter de cocher/décocher un par un.
+     */
+    private void toutLierFichiersCoursDefaut(boolean coche) {
+        Cours coursActuel = listeCours.getSelectionModel().getSelectedItem();
+        if (coursActuel == null) {
+            return;
+        }
+        for (Fichier fichier : listeFichiersCoursDefaut.getItems()) {
+            if (coche) {
+                coursActuel.ajouterFichierLie(fichier.getId());
+            } else {
+                coursActuel.retirerFichierLie(fichier.getId());
+            }
+        }
+        listeFichiersCoursDefaut.refresh();
+        tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(coursActuel));
+        notifierChangement();
     }
 
     private ObservableValue<Boolean> proprieteFichierLie(Fichier fichier) {

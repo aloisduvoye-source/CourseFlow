@@ -115,6 +115,21 @@ public class EmploiDuTempsPane extends BorderPane {
         rafraichir();
     }
 
+    /**
+     * Ouvre la boîte de dialogue d'édition pour un créneau existant, depuis un autre écran
+     * (ex. le raccourci "Modifier" de l'Accueil) sans passer par un clic sur son bloc.
+     */
+    public void ouvrirEdition(Creneau creneau) {
+        if (creneau == null) {
+            return;
+        }
+        if (creneau.getTypeSemaine() != TypeSemaine.TOUTES && creneau.getTypeSemaine() != semaineAffichee) {
+            semaineAffichee = creneau.getTypeSemaine();
+            rafraichir();
+        }
+        ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut(), creneau.getHeureFin());
+    }
+
     private HBox construireSelecteurSemaine() {
         ToggleGroup groupe = new ToggleGroup();
         ToggleButton boutonA = new ToggleButton("Semaine A");
@@ -322,8 +337,7 @@ public class EmploiDuTempsPane extends BorderPane {
             DayOfWeek jour = joursAffiches[jourIndex];
             boolean journeeVide = creneauxVisibles.stream().noneMatch(c -> c.getJour() == jour);
             if (journeeVide) {
-                boolean weekEnd = jour == DayOfWeek.SATURDAY || jour == DayOfWeek.SUNDAY;
-                Label vide = new Label(weekEnd ? "Pas de cours" : "Journée libre");
+                Label vide = new Label("Journée libre");
                 vide.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-style: italic; -fx-font-size: 12;");
                 vide.setPrefWidth(largeurColonneJour);
                 vide.setAlignment(Pos.CENTER);
@@ -540,6 +554,10 @@ public class EmploiDuTempsPane extends BorderPane {
             creneau.setHeureDebut(minutesVersHeure(debutFinal));
             creneau.setHeureFin(minutesVersHeure(finFinal));
             notifierChangement();
+            // Reconstruit toute la grille (pas seulement ce bloc) : le jour de départ peut être
+            // devenu vide (ou le jour d'arrivée ne plus l'être), ce qui doit mettre à jour le
+            // libellé "Journée libre"/"Pas de cours" affiché pour ce jour.
+            rafraichir();
             e.consume();
         }
     }

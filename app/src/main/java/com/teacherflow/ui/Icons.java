@@ -18,6 +18,16 @@ final class Icons {
             "M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z";
     private static final String CHEMIN_DOSSIER =
             "M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z";
+    private static final String CHEMIN_DOCUMENT =
+            "M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z";
+    private static final String CHEMIN_LIEN =
+            "M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z";
+    private static final String CHEMIN_CRAYON =
+            "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34"
+                    + "c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z";
+    private static final String CHEMIN_GRAPHIQUE = "M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z";
+    private static final String CHEMIN_FLECHE_GAUCHE = "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z";
+    private static final String CHEMIN_FLECHE_DROITE = "M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z";
     private static final double TAILLE_CONTENEUR = 16;
 
     private Icons() {
@@ -29,6 +39,30 @@ final class Icons {
 
     static Node dossier() {
         return icone(CHEMIN_DOSSIER);
+    }
+
+    static Node document() {
+        return icone(CHEMIN_DOCUMENT);
+    }
+
+    static Node lien() {
+        return icone(CHEMIN_LIEN);
+    }
+
+    static Node crayon() {
+        return icone(CHEMIN_CRAYON);
+    }
+
+    static Node graphique() {
+        return icone(CHEMIN_GRAPHIQUE);
+    }
+
+    static Node flecheGauche() {
+        return icone(CHEMIN_FLECHE_GAUCHE);
+    }
+
+    static Node flecheDroite() {
+        return icone(CHEMIN_FLECHE_DROITE);
     }
 
     /**
