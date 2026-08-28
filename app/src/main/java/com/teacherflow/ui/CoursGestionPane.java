@@ -26,6 +26,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TitledPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
@@ -688,11 +689,13 @@ public class CoursGestionPane extends BorderPane {
     private class FichierCell extends ListCell<Fichier> {
         private final Label libelle = new Label();
         private final HBox conteneurTags = new HBox(4);
-        private final Button boutonTags = new Button("Tags");
+        private final Button boutonTags = new Button();
         private final Button boutonSupprimer = new Button();
         private final HBox ligne = new HBox(8);
 
         FichierCell() {
+            boutonTags.setGraphic(Icons.tag());
+            boutonTags.setTooltip(new Tooltip("Tags"));
             boutonTags.setOnAction(e -> {
                 Fichier fichier = getItem();
                 if (fichier != null) {

@@ -172,7 +172,7 @@ public class AccueilPane extends BorderPane {
         Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
         String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : COULEUR_PAR_DEFAUT;
 
-        Label libelleHeure = new Label(creneau.getHeureDebut().toString());
+        Label libelleHeure = new Label(creneau.getHeureDebut() + " - " + creneau.getHeureFin());
         libelleHeure.setStyle("-fx-font-family: monospace; -fx-text-fill: " + couleur + "; -fx-font-weight: bold;");
 
         Label libelleNomCours = new Label(cours != null ? cours.getNom() : "(cours supprimé)");

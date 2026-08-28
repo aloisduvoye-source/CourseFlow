@@ -1,5 +1,6 @@
 package com.teacherflow.ui;
 
+import atlantafx.base.theme.Styles;
 import com.teacherflow.io.OuvreurFichiers;
 import com.teacherflow.model.Cours;
 import com.teacherflow.model.Creneau;
@@ -9,6 +10,7 @@ import com.teacherflow.model.Parametres;
 import com.teacherflow.model.PlageHoraire;
 import com.teacherflow.model.TypeSemaine;
 import com.teacherflow.util.NomsJours;
+import com.teacherflow.util.TypeFichier;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -17,6 +19,7 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -28,6 +31,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
@@ -35,7 +39,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
@@ -54,6 +57,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -241,6 +245,39 @@ public class EmploiDuTempsPane extends BorderPane {
         Region region = new Region();
         region.setPrefWidth(largeur);
         return region;
+    }
+
+    private static Label labelSection(String texte) {
+        Label label = new Label(texte);
+        label.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 10; -fx-font-weight: bold;");
+        return label;
+    }
+
+    private static Region espaceurExtensible() {
+        Region region = new Region();
+        HBox.setHgrow(region, Priority.ALWAYS);
+        return region;
+    }
+
+    /**
+     * Icône de type de fichier pour une ligne de la liste du dialogue de créneau : simple
+     * indication visuelle par extension (pas d'aperçu image ici, contrairement à l'Accueil,
+     * pour rester compact dans cette liste filtrable).
+     */
+    private static Node iconePourFichier(String chemin) {
+        if (chemin == null) {
+            return Icons.document();
+        }
+        if (TypeFichier.estDocumentTexte(chemin)) {
+            return Icons.crayon();
+        }
+        if (TypeFichier.estPresentation(chemin)) {
+            return Icons.graphique();
+        }
+        if (OuvreurFichiers.estUrl(chemin)) {
+            return Icons.lien();
+        }
+        return Icons.document();
     }
 
     public void rafraichir() {
@@ -462,13 +499,13 @@ public class EmploiDuTempsPane extends BorderPane {
             setPrefHeight(Math.max(DUREE_MIN_MINUTES, finAffiche - debutAffiche) * PIXELS_PAR_MINUTE);
             Cours cours = emploiDuTemps.trouverCours(creneau.getCoursId()).orElse(null);
             String nomCours = cours != null ? cours.getNom() : "(cours supprimé)";
+            if (creneau.getSalle() != null && !creneau.getSalle().isBlank()) {
+                nomCours += " · " + creneau.getSalle();
+            }
             titre.setText(nomCours);
 
             StringBuilder texte = new StringBuilder();
             texte.append(minutesVersHeure(debutMinutes)).append(" - ").append(minutesVersHeure(finMinutes));
-            if (creneau.getSalle() != null && !creneau.getSalle().isBlank()) {
-                texte.append('\n').append(creneau.getSalle());
-            }
             if (creneau.getTypeSemaine() != TypeSemaine.TOUTES) {
                 texte.append(" (").append(creneau.getTypeSemaine()).append(')');
             }
@@ -627,22 +664,68 @@ public class EmploiDuTempsPane extends BorderPane {
         }
         choixCours.setValue(coursInitial);
 
-        champSalle.setPrefWidth(120);
+        // --- Bandeau d'en-tête coloré (couleur du cours), affiché sous la barre de titre native
+        // de la fenêtre via dialogPane.setHeader(...) : jour + heure de début-fin, choix du cours
+        // (intégré directement dans le bandeau) et salle. Se met à jour en direct quand ces
+        // champs changent, plutôt que d'être un texte figé.
+        Label labelJourHeure = new Label();
+        labelJourHeure.setStyle("-fx-text-fill: rgba(255,255,255,0.85); -fx-font-size: 11; -fx-font-weight: bold;");
+        choixCours.setStyle("-fx-font-size: 20; -fx-font-weight: bold;"
+                + " -fx-background-color: rgba(255,255,255,0.92); -fx-background-radius: 6;");
+        choixCours.setMaxWidth(Double.MAX_VALUE);
+        Label labelSalleBanniere = new Label();
+        labelSalleBanniere.setStyle("-fx-text-fill: rgba(255,255,255,0.85); -fx-font-size: 13;");
+        VBox banniere = new VBox(6, labelJourHeure, choixCours, labelSalleBanniere);
+        banniere.setPadding(new Insets(20, 24, 20, 24));
+
+        Runnable actualiserBanniere = () -> {
+            Cours coursChoisi = choixCours.getValue();
+            String couleur = coursChoisi != null && coursChoisi.getCouleur() != null
+                    ? coursChoisi.getCouleur() : "#95a5a6";
+            banniere.setStyle("-fx-background-color: " + couleur + ";");
+            LocalTime debutAffiche = choixDebut.getValue() != null ? choixDebut.getValue() : heureDebutParDefaut;
+            LocalTime finAffichee = choixFin.getValue() != null ? choixFin.getValue() : heureFinParDefaut;
+            labelJourHeure.setText(NomsJours.nom(jour).toUpperCase(Locale.FRENCH)
+                    + " · " + debutAffiche + " - " + finAffichee);
+            String salle = champSalle.getText();
+            labelSalleBanniere.setText(salle != null && !salle.isBlank() ? "Salle " + salle : "");
+            labelSalleBanniere.setManaged(!labelSalleBanniere.getText().isEmpty());
+            labelSalleBanniere.setVisible(!labelSalleBanniere.getText().isEmpty());
+        };
+        choixDebut.valueProperty().addListener((obs, ancien, nouveau) -> actualiserBanniere.run());
+        choixFin.valueProperty().addListener((obs, ancien, nouveau) -> actualiserBanniere.run());
+        champSalle.textProperty().addListener((obs, ancien, nouveau) -> actualiserBanniere.run());
 
         ObservableList<Fichier> tousLesFichiersDialogue = FXCollections.observableArrayList();
         FilteredList<Fichier> fichiersFiltresDialogue = new FilteredList<>(tousLesFichiersDialogue);
 
+        Label libelleCompteSelection = new Label();
+        libelleCompteSelection.setStyle(
+                "-fx-text-fill: -color-accent-emphasis; -fx-font-weight: bold; -fx-font-size: 11;");
+        Runnable actualiserCompteSelection = () -> libelleCompteSelection.setText(
+                fichiersCoches.size() + (fichiersCoches.size() > 1 ? " sélectionnés" : " sélectionné"));
+
         ListView<Fichier> listeFichiers = new ListView<>();
-        listeFichiers.setPrefHeight(160);
+        listeFichiers.setPrefHeight(220);
         listeFichiers.setCellFactory(vue -> new ListCell<>() {
             private final CheckBox caseCoche = new CheckBox();
-            private final Label libelleFichier = new Label();
+            private final Label libelleNom = new Label();
+            private final Label libelleChemin = new Label();
+            private final VBox texteFichier = new VBox(1, libelleNom, libelleChemin);
             private final HBox conteneurTags = new HBox(4);
-            private final HBox ligneCellule = new HBox(8, caseCoche, libelleFichier, conteneurTags);
+            private final Label libelleExtension = new Label();
+            private final Region espaceurCellule = new Region();
+            private final HBox ligneCellule = new HBox(8,
+                    caseCoche, Icons.document(), texteFichier, espaceurCellule, conteneurTags, libelleExtension);
 
             {
+                libelleNom.setStyle("-fx-font-weight: bold; -fx-font-size: 12;");
+                libelleChemin.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 10;");
+                libelleExtension.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 10;");
                 conteneurTags.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(espaceurCellule, Priority.ALWAYS);
                 ligneCellule.setAlignment(Pos.CENTER_LEFT);
+                ligneCellule.setPadding(new Insets(8, 10, 8, 10));
                 caseCoche.setOnAction(e -> {
                     Fichier fichier = getItem();
                     if (fichier == null) {
@@ -653,7 +736,17 @@ public class EmploiDuTempsPane extends BorderPane {
                     } else {
                         fichiersCoches.remove(fichier.getId());
                     }
+                    appliquerStyleSelection(caseCoche.isSelected());
+                    actualiserCompteSelection.run();
                 });
+            }
+
+            private void appliquerStyleSelection(boolean selectionne) {
+                ligneCellule.setStyle(selectionne
+                        ? "-fx-background-color: -color-accent-subtle; -fx-background-radius: 6;"
+                                + " -fx-border-color: -color-accent-emphasis; -fx-border-radius: 6; -fx-border-width: 1;"
+                        : "-fx-background-color: -color-bg-subtle; -fx-background-radius: 6;"
+                                + " -fx-border-color: -color-border-default; -fx-border-radius: 6; -fx-border-width: 1;");
             }
 
             @Override
@@ -663,18 +756,34 @@ public class EmploiDuTempsPane extends BorderPane {
                     setGraphic(null);
                     return;
                 }
-                libelleFichier.setText(fichier.toString());
-                caseCoche.setSelected(fichiersCoches.contains(fichier.getId()));
+                libelleNom.setText(fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
+                        ? fichier.getNomAffichage() : fichier.getChemin());
+                libelleChemin.setText(fichier.getChemin() != null ? fichier.getChemin() : "");
+                libelleChemin.setManaged(!libelleChemin.getText().isBlank());
+                libelleChemin.setVisible(!libelleChemin.getText().isBlank());
+
+                boolean selectionne = fichiersCoches.contains(fichier.getId());
+                caseCoche.setSelected(selectionne);
+                appliquerStyleSelection(selectionne);
+
                 conteneurTags.getChildren().clear();
                 for (String tag : fichier.getTags()) {
                     conteneurTags.getChildren().add(
                             TagPills.pastille(tag, emploiDuTemps.getParametres().couleurTag(tag)));
                 }
+
+                String extension = TypeFichier.extension(fichier.getChemin());
+                libelleExtension.setText(extension != null ? extension : "");
+                libelleExtension.setManaged(extension != null);
+                libelleExtension.setVisible(extension != null);
+
+                ligneCellule.getChildren().set(1, iconePourFichier(fichier.getChemin()));
                 setGraphic(ligneCellule);
             }
         });
         listeFichiers.setItems(fichiersFiltresDialogue);
         tousLesFichiersDialogue.setAll(emploiDuTemps.fichiersVisibles(coursInitial));
+        actualiserCompteSelection.run();
 
         TextField rechercheFichiers = new TextField();
         rechercheFichiers.setPromptText("Rechercher un fichier...");
@@ -707,6 +816,8 @@ public class EmploiDuTempsPane extends BorderPane {
                 emploiDuTemps.fichiersVisibles(coursChoisi).forEach(f -> fichiersCoches.add(f.getId()));
             }
             tousLesFichiersDialogue.setAll(coursChoisi != null ? emploiDuTemps.fichiersVisibles(coursChoisi) : List.of());
+            actualiserCompteSelection.run();
+            actualiserBanniere.run();
         });
 
         Button boutonToutCocher = new Button("Tout cocher");
@@ -714,45 +825,80 @@ public class EmploiDuTempsPane extends BorderPane {
             fichiersCoches.clear();
             listeFichiers.getItems().forEach(f -> fichiersCoches.add(f.getId()));
             listeFichiers.refresh();
+            actualiserCompteSelection.run();
         });
         Button boutonToutDecocher = new Button("Tout décocher");
         boutonToutDecocher.setOnAction(e -> {
             fichiersCoches.clear();
             listeFichiers.refresh();
+            actualiserCompteSelection.run();
         });
         HBox boutonsFichiers = new HBox(8, boutonToutCocher, boutonToutDecocher);
 
-        HBox ligneHoraire = new HBox(8, new Label("De"), choixDebut, new Label("À"), choixFin);
-        ligneHoraire.setAlignment(Pos.CENTER_LEFT);
+        // Ligne compacte d'édition (horaire/semaine/salle) sous la bannière : le cours se choisit
+        // directement dans le bandeau coloré désormais, l'heure de début/fin y est aussi
+        // reflétée mais reste éditable ici.
+        HBox.setHgrow(champSalle, Priority.ALWAYS);
+        champSalle.setMaxWidth(Double.MAX_VALUE);
+        HBox ligneHoraireSemaine = new HBox(8, new Label("De"), choixDebut, new Label("à"), choixFin, choixSemaine);
+        ligneHoraireSemaine.setAlignment(Pos.CENTER_LEFT);
 
-        GridPane formulaire = new GridPane();
-        formulaire.setHgap(8);
-        formulaire.setVgap(8);
-        formulaire.addRow(0, new Label("Cours"), choixCours);
-        formulaire.add(ligneHoraire, 0, 1, 2, 1);
-        formulaire.addRow(2, new Label("Semaine"), choixSemaine);
-        formulaire.addRow(3, new Label("Salle"), champSalle);
-        formulaire.addRow(4, new Label("Description"), champDescription);
-        formulaire.add(new Label("Fichiers à utiliser pour cette séance"), 0, 5, 2, 1);
-        formulaire.add(ligneFiltresFichiers, 0, 6, 2, 1);
-        formulaire.add(listeFichiers, 0, 7, 2, 1);
-        formulaire.add(boutonsFichiers, 0, 8, 2, 1);
+        HBox ligneSalle = new HBox(8, new Label("Salle"), champSalle);
+        ligneSalle.setAlignment(Pos.CENTER_LEFT);
+
+        VBox ligneEditionCompacte = new VBox(6, ligneHoraireSemaine, ligneSalle);
+
+        champDescription.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 6;"
+                + " -fx-border-color: -color-border-default; -fx-border-radius: 6;");
+
+        HBox ligneTitreFichiers = new HBox(labelSection("FICHIERS DU COURS"), espaceurExtensible(), libelleCompteSelection);
+        ligneTitreFichiers.setAlignment(Pos.CENTER_LEFT);
+
+        VBox formulaire = new VBox(14,
+                ligneEditionCompacte,
+                new Separator(),
+                labelSection("NOTE DE SÉANCE"), champDescription,
+                new Separator(),
+                ligneTitreFichiers, ligneFiltresFichiers, listeFichiers, boutonsFichiers);
+        formulaire.setPadding(new Insets(20, 24, 16, 24));
 
         ButtonType boutonValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
         ButtonType boutonSupprimer = new ButtonType("Supprimer", ButtonBar.ButtonData.LEFT);
         ButtonType boutonDupliquer = new ButtonType("Dupliquer", ButtonBar.ButtonData.LEFT);
-        ButtonType boutonOuvrir = new ButtonType("Ouvrir maintenant", ButtonBar.ButtonData.APPLY);
+        ButtonType boutonOuvrir = new ButtonType("▶ Ouvrir maintenant", ButtonBar.ButtonData.APPLY);
 
         Dialog<ButtonType> dialogue = new Dialog<>();
         dialogue.setTitle(creneauExistant == null ? "Nouveau créneau" : "Modifier le créneau");
-        dialogue.setHeaderText(NomsJours.nom(jour));
         dialogue.setResizable(true);
+        dialogue.getDialogPane().setHeader(banniere);
         dialogue.getDialogPane().setContent(formulaire);
-        dialogue.getDialogPane().setPrefWidth(480);
+        dialogue.getDialogPane().setPrefWidth(520);
         if (creneauExistant != null) {
             dialogue.getDialogPane().getButtonTypes().addAll(boutonSupprimer, boutonDupliquer);
         }
         dialogue.getDialogPane().getButtonTypes().addAll(boutonOuvrir, boutonValider, ButtonType.CANCEL);
+
+        Button noeudOuvrir = (Button) dialogue.getDialogPane().lookupButton(boutonOuvrir);
+        if (noeudOuvrir != null) {
+            noeudOuvrir.getStyleClass().add(Styles.ACCENT);
+        }
+        if (creneauExistant != null) {
+            Button noeudSupprimer = (Button) dialogue.getDialogPane().lookupButton(boutonSupprimer);
+            if (noeudSupprimer != null) {
+                noeudSupprimer.getStyleClass().addAll(Styles.DANGER, Styles.BUTTON_OUTLINED);
+            }
+        }
+        // Pas de bouton "Annuler" visible (fermer la fenêtre a le même effet) : on garde quand
+        // même un ButtonType.CANCEL dans le dialogue et on masque juste son bouton, car JavaFX ne
+        // câble la croix native (fermeture de fenêtre) que s'il existe un bouton de type
+        // CANCEL_CLOSE — sans lui, la croix ne fait plus rien du tout.
+        Button noeudAnnuler = (Button) dialogue.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (noeudAnnuler != null) {
+            noeudAnnuler.setVisible(false);
+            noeudAnnuler.setManaged(false);
+        }
+
+        actualiserBanniere.run();
 
         Optional<ButtonType> resultat = dialogue.showAndWait();
         if (resultat.isEmpty() || resultat.get() == ButtonType.CANCEL) {

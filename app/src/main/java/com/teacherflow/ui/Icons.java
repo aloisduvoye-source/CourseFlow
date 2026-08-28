@@ -28,6 +28,10 @@ final class Icons {
     private static final String CHEMIN_GRAPHIQUE = "M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z";
     private static final String CHEMIN_FLECHE_GAUCHE = "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z";
     private static final String CHEMIN_FLECHE_DROITE = "M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z";
+    private static final String CHEMIN_TAG =
+            "M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.41l9 9"
+                    + "c.36.36.86.59 1.41.59.55 0 1.05-.23 1.41-.59l7-7c.37-.36.59-.86.59-1.42"
+                    + " 0-.55-.23-1.05-.59-1.41zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z";
     private static final double TAILLE_CONTENEUR = 16;
 
     private Icons() {
@@ -63,6 +67,10 @@ final class Icons {
 
     static Node flecheDroite() {
         return icone(CHEMIN_FLECHE_DROITE);
+    }
+
+    static Node tag() {
+        return icone(CHEMIN_TAG);
     }
 
     /**
