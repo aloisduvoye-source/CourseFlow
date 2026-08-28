@@ -10,6 +10,7 @@ import com.courseflow.ui.EmploiDuTempsPane;
 import com.courseflow.ui.ParametresPane;
 import javafx.application.Application;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -18,7 +19,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -31,6 +34,7 @@ public class App extends Application {
 
     private final DataStore dataStore = new DataStore();
     private EmploiDuTemps emploiDuTemps;
+    private Scene scene;
 
     @Override
     public void start(Stage stage) {
@@ -86,7 +90,7 @@ public class App extends Application {
         });
         boutonParametres.setOnAction(e -> afficherVue(vueParametres, vueAccueil, vueCours, vueEmploiDuTemps, vueParametres));
 
-        Label titreApp = new Label("CourseFlow");
+        HBox enTeteMarque = construireEnTeteMarque();
 
         Region espaceur = new Region();
         VBox.setVgrow(espaceur, Priority.ALWAYS);
@@ -100,7 +104,7 @@ public class App extends Application {
             sauvegarder();
         });
 
-        VBox barreLaterale = new VBox(4, titreApp, boutonAccueil, boutonCours, boutonEmploiDuTemps, boutonParametres,
+        VBox barreLaterale = new VBox(4, enTeteMarque, boutonAccueil, boutonCours, boutonEmploiDuTemps, boutonParametres,
                 espaceur, caseThemeSombre);
         barreLaterale.setPadding(new Insets(16, 8, 16, 8));
         barreLaterale.setPrefWidth(190);
@@ -109,7 +113,8 @@ public class App extends Application {
         racine.setLeft(barreLaterale);
         racine.setCenter(contenu);
 
-        Scene scene = new Scene(racine, 1050, 700);
+        scene = new Scene(racine, 1050, 700);
+        appliquerTheme(emploiDuTemps.getParametres().isThemeSombre());
         stage.setScene(scene);
         stage.setTitle("CourseFlow");
         chargerIcone(stage);
@@ -129,8 +134,29 @@ public class App extends Application {
         }
     }
 
+    /** Logo + nom de l'application en tête de la barre latérale. */
+    private HBox construireEnTeteMarque() {
+        Label titre = new Label("CourseFlow");
+        titre.getStyleClass().add("marque-titre");
+
+        HBox enTete = new HBox(8, titre);
+        enTete.setAlignment(Pos.CENTER_LEFT);
+        enTete.setPadding(new Insets(4, 4, 12, 4));
+
+        var flux = App.class.getResourceAsStream("icon.png");
+        if (flux != null) {
+            ImageView logo = new ImageView(new Image(flux, 24, 24, true, true));
+            enTete.getChildren().add(0, logo);
+        }
+        return enTete;
+    }
+
     private void appliquerTheme(boolean sombre) {
         Application.setUserAgentStylesheet(sombre ? new PrimerDark().getUserAgentStylesheet() : new PrimerLight().getUserAgentStylesheet());
+        if (scene != null) {
+            String charte = sombre ? "charte-sombre.css" : "charte-claire.css";
+            scene.getStylesheets().setAll(App.class.getResource(charte).toExternalForm());
+        }
     }
 
     private void afficherVue(Node aAfficher, Node... vues) {

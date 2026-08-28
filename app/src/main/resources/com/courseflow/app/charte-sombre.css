@@ -1,0 +1,27 @@
+/*
+ * Charte graphique CourseFlow — variante sombre (thème Primer sombre).
+ * Accent indigo repris de l'icône, éclairci pour rester lisible sur fond sombre.
+ */
+.root {
+    -color-accent-0: #e0e7ff;
+    -color-accent-1: #c7d2fe;
+    -color-accent-2: #a5b4fc;
+    -color-accent-3: #818cf8;
+    -color-accent-4: #6366f1;
+    -color-accent-5: #6366f1;
+    -color-accent-6: #4f46e5;
+    -color-accent-7: #4338ca;
+    -color-accent-8: #3730a3;
+    -color-accent-9: #312e81;
+
+    -color-accent-fg: #a5b4fc;
+    -color-accent-emphasis: #6366f1;
+    -color-accent-muted: rgba(129, 140, 248, 0.4);
+    -color-accent-subtle: rgba(99, 102, 241, 0.15);
+}
+
+.marque-titre {
+    -fx-font-size: 18;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-accent-fg;
+}

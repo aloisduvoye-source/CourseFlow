@@ -176,8 +176,8 @@ exécutable packagé).
 ### Icône
 
 L'icône source est vectorielle : [packaging/icon/courseflow.svg](packaging/icon/courseflow.svg)
-— **placeholder pour l'instant**, à remplacer par le design définitif (garder le même nom de
-fichier). Après remplacement, régénérer les PNG dérivés :
+(dossier + horloge, indigo `#4338CA` / ambre `#F59E0B`). Après toute modification, régénérer les
+PNG dérivés :
 ```
 bin/generer-icone
 ```
@@ -186,6 +186,13 @@ utilisé par `jpackage --icon` pour le lanceur natif) et en
 `app/src/main/resources/com/courseflow/app/icon.png` (icône de fenêtre / barre des tâches, chargée
 dans [App.java](app/src/main/java/com/courseflow/app/App.java)). Les deux PNG sont versionnés pour
 que le build n'ait pas besoin d'ImageMagick.
+
+**Charte graphique** : l'accent de l'interface reprend l'indigo de l'icône. Les fichiers
+[charte-claire.css](app/src/main/resources/com/courseflow/app/charte-claire.css) et
+[charte-sombre.css](app/src/main/resources/com/courseflow/app/charte-sombre.css) surchargent la
+rampe `-color-accent-*` d'AtlantaFX (thème Primer) et sont chargés en plus du thème par
+`App.appliquerTheme()`. Le logo est aussi affiché à côté du titre dans la barre latérale, et la
+couleur par défaut d'un nouveau cours est cet indigo.
 
 ## État actuel du projet
 

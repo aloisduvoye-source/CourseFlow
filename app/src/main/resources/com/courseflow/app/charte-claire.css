@@ -1,0 +1,29 @@
+/*
+ * Charte graphique CourseFlow — accent indigo repris de l'icône (#4338CA).
+ * Surcharge la rampe "accent" d'AtlantaFX (thème Primer clair). Chargée en plus du
+ * user-agent stylesheet par App.appliquerTheme().
+ */
+.root {
+    -color-accent-0: #eef2ff;
+    -color-accent-1: #e0e7ff;
+    -color-accent-2: #c7d2fe;
+    -color-accent-3: #a5b4fc;
+    -color-accent-4: #818cf8;
+    -color-accent-5: #4338ca;
+    -color-accent-6: #3730a3;
+    -color-accent-7: #312e81;
+    -color-accent-8: #26236b;
+    -color-accent-9: #1e1b4b;
+
+    -color-accent-fg: #4338ca;
+    -color-accent-emphasis: #4338ca;
+    -color-accent-muted: rgba(129, 140, 248, 0.4);
+    -color-accent-subtle: #eef2ff;
+}
+
+/* Titre de marque dans la barre latérale */
+.marque-titre {
+    -fx-font-size: 18;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-accent-fg;
+}

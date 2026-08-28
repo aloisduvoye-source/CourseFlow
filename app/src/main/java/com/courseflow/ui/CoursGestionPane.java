@@ -55,7 +55,7 @@ import java.util.UUID;
  */
 public class CoursGestionPane extends BorderPane {
 
-    private static final String COULEUR_PAR_DEFAUT = "#3498db";
+    private static final String COULEUR_PAR_DEFAUT = "#4338ca";
 
     private final EmploiDuTemps emploiDuTemps;
     private final Runnable surChangement;
