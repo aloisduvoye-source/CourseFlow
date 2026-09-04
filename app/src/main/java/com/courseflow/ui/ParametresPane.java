@@ -4,6 +4,7 @@ import com.courseflow.model.EmploiDuTemps;
 import com.courseflow.model.Parametres;
 import com.courseflow.model.PlageHoraire;
 import com.courseflow.util.NomsJours;
+import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -280,12 +281,28 @@ public class ParametresPane extends BorderPane {
         try {
             Files.createDirectories(fichierDonnees.getParent());
             Files.copy(source.toPath(), fichierDonnees, StandardCopyOption.REPLACE_EXISTING);
-            // TODO UX : l'import nécessite un redémarrage manuel de l'application, facile à
-            // oublier (seulement mentionné dans ce texte). Proposer un bouton "Redémarrer
-            // maintenant" dans l'alerte de succès plutôt qu'un simple message.
-            informer("Import réussi", "Configuration importée. Ferme et relance l'application pour voir les nouvelles données.");
+            informerImportReussiEtProposerQuitter();
         } catch (IOException e) {
             informer("Import impossible", "Échec de l'import : " + e.getMessage());
+        }
+    }
+
+    /**
+     * L'application doit être relancée pour afficher les données importées (pas de rechargement
+     * à chaud). Plutôt qu'un simple message facile à oublier, on propose de la fermer
+     * immédiatement : il ne reste plus alors qu'à la rouvrir, au lieu de devoir aussi penser à
+     * la fermer soi-même.
+     */
+    private void informerImportReussiEtProposerQuitter() {
+        Alert alerte = new Alert(Alert.AlertType.INFORMATION,
+                "Configuration importée. CourseFlow doit être relancé pour afficher les nouvelles données.");
+        alerte.setTitle("Import réussi");
+        alerte.setHeaderText(null);
+        ButtonType boutonQuitter = new ButtonType("Quitter maintenant", ButtonBar.ButtonData.OK_DONE);
+        alerte.getButtonTypes().setAll(boutonQuitter, ButtonType.CLOSE);
+        Optional<ButtonType> reponse = alerte.showAndWait();
+        if (reponse.isPresent() && reponse.get() == boutonQuitter) {
+            Platform.exit();
         }
     }
 
