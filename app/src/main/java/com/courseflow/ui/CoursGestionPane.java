@@ -34,6 +34,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -76,6 +77,7 @@ public class CoursGestionPane extends BorderPane {
     private final Label messageVide = new Label("Sélectionnez un cours ou créez-en un nouveau.");
     private final VBox panneauDetails = new VBox(12);
     private final ScrollPane defilementDetails = new ScrollPane();
+    private final StackPane conteneurCentre = new StackPane();
 
     public CoursGestionPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
         this.emploiDuTemps = emploiDuTemps;
@@ -83,7 +85,9 @@ public class CoursGestionPane extends BorderPane {
 
         setPadding(new Insets(16));
         setLeft(construireColonneListe());
-        setCenter(construireDetails());
+        construireDetails();
+        conteneurCentre.getChildren().addAll(defilementDetails, messageVide);
+        setCenter(conteneurCentre);
 
         tousLesCours.addAll(emploiDuTemps.getCours());
         listeCours.getSelectionModel().selectedItemProperty()
@@ -208,7 +212,10 @@ public class CoursGestionPane extends BorderPane {
 
     private void afficherDetails(Cours cours) {
         boolean unCoursSelectionne = cours != null;
-        setCenter(unCoursSelectionne ? defilementDetails : messageVide);
+        defilementDetails.setVisible(unCoursSelectionne);
+        defilementDetails.setManaged(unCoursSelectionne);
+        messageVide.setVisible(!unCoursSelectionne);
+        messageVide.setManaged(!unCoursSelectionne);
 
         if (!unCoursSelectionne) {
             return;
@@ -619,20 +626,35 @@ public class CoursGestionPane extends BorderPane {
         notifierChangement();
     }
 
-    // TODO UX : suppression immédiate sans confirmation ni undo. Ajouter un mécanisme
-    // d'annulation léger (ex. dernier fichier retiré restaurable via Ctrl+Z), cohérent avec
-    // l'undo déjà présent dans EmploiDuTempsPane pour les créneaux.
     private void retirerFichier(Fichier fichier) {
         Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
         if (selectionne == null) {
             return;
         }
+        int index = selectionne.getFichiers().indexOf(fichier);
         selectionne.retirerFichier(fichier.getId());
         for (DossierReference reference : selectionne.getDossiersReferences()) {
             reference.getFichiersImportes().remove(fichier.getChemin());
         }
         tousLesFichiers.remove(fichier);
         rafraichirContenuDossiersReferencesOuverts(selectionne);
+        notifierChangement();
+
+        Toast.montrer(conteneurCentre, "Fichier retiré du cours", "Annuler",
+                () -> restaurerFichierRetire(selectionne, fichier, index));
+    }
+
+    /**
+     * Réinsère un fichier retiré via {@link #retirerFichier} à sa position d'origine, sans
+     * rétablir son éventuel lien avec un dossier référencé (perdu à la suppression).
+     */
+    private void restaurerFichierRetire(Cours cours, Fichier fichier, int indexOrigine) {
+        List<Fichier> fichiers = cours.getFichiers();
+        int index = Math.max(0, Math.min(indexOrigine, fichiers.size()));
+        fichiers.add(index, fichier);
+        if (cours.equals(listeCours.getSelectionModel().getSelectedItem())) {
+            tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(cours));
+        }
         notifierChangement();
     }
 
