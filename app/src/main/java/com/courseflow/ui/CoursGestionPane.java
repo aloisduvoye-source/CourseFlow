@@ -662,8 +662,7 @@ public class CoursGestionPane extends BorderPane {
 
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setAlignment(Pos.CENTER);
-            // TODO UX : ajouter un Tooltip("Supprimer ce cours") - bouton icône seule, action
-            // destructrice non explicite au survol (contrairement à boutonTags de FichierCell).
+            boutonSupprimer.setTooltip(new Tooltip("Supprimer ce cours"));
             boutonSupprimer.setOnAction(e -> {
                 Cours cours = getItem();
                 if (cours != null) {
@@ -712,8 +711,7 @@ public class CoursGestionPane extends BorderPane {
 
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setAlignment(Pos.CENTER);
-            // TODO UX : ajouter un Tooltip("Retirer ce fichier") (voir boutonTags juste au-dessus,
-            // qui en a déjà un - incohérence entre les deux boutons icône de cette cellule).
+            boutonSupprimer.setTooltip(new Tooltip("Retirer ce fichier du cours"));
             boutonSupprimer.setOnAction(e -> {
                 Fichier fichier = getItem();
                 if (fichier == null) {
