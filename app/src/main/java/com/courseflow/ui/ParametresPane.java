@@ -90,6 +90,10 @@ public class ParametresPane extends BorderPane {
         aideBlocs.setWrapText(true);
         aideBlocs.setMaxWidth(420);
 
+        // TODO UX : page à défilement continu regroupant des réglages hétérogènes (jours,
+        // incrément, plage horaire, blocs horaires, semaines alternées, sauvegarde) sans
+        // sous-navigation. Envisager des sections repliables (TitledPane) ou des onglets
+        // internes pour réduire la densité perçue à la première visite.
         VBox contenu = new VBox(20,
                 construireSectionJours(),
                 construireSectionIncrement(),
@@ -274,6 +278,9 @@ public class ParametresPane extends BorderPane {
         try {
             Files.createDirectories(fichierDonnees.getParent());
             Files.copy(source.toPath(), fichierDonnees, StandardCopyOption.REPLACE_EXISTING);
+            // TODO UX : l'import nécessite un redémarrage manuel de l'application, facile à
+            // oublier (seulement mentionné dans ce texte). Proposer un bouton "Redémarrer
+            // maintenant" dans l'alerte de succès plutôt qu'un simple message.
             informer("Import réussi", "Configuration importée. Ferme et relance l'application pour voir les nouvelles données.");
         } catch (IOException e) {
             informer("Import impossible", "Échec de l'import : " + e.getMessage());
@@ -408,6 +415,8 @@ public class ParametresPane extends BorderPane {
         notifierChangement();
     }
 
+    // TODO UX : suppression immédiate sans confirmation ni undo, contrairement aux créneaux de
+    // l'emploi du temps qui bénéficient d'un Ctrl+Z. Ajouter un mécanisme équivalent ici.
     private void supprimerBloc(PlageHoraire bloc) {
         List<PlageHoraire> blocs = new ArrayList<>(parametres.getBlocs());
         blocs.remove(bloc);

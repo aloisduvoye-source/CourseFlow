@@ -12,6 +12,10 @@ import javafx.scene.transform.Scale;
 /**
  * Petites icônes vectorielles réutilisées dans l'interface (évite d'embarquer des fichiers image).
  */
+// TODO UX accessibilité : les boutons icône-seule (sans texte visible, ex.
+// CoursGestionPane.CoursCell.boutonSupprimer, FichierCell.boutonSupprimer/boutonTags,
+// AccueilPane.boutonEditer/construireFlecheJour) n'ont pas tous de Tooltip et aucun n'a de
+// setAccessibleText -> à ajouter systématiquement pour les lecteurs d'écran.
 final class Icons {
 
     private static final String CHEMIN_POUBELLE =

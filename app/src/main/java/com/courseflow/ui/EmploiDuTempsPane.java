@@ -264,6 +264,8 @@ public class EmploiDuTempsPane extends BorderPane {
      * indication visuelle par extension (pas d'aperçu image ici, contrairement à l'Accueil,
      * pour rester compact dans cette liste filtrable).
      */
+    // TODO UX/qualité : logique dupliquée avec AccueilPane.iconeFichier (règles légèrement
+    // différentes, pas de vignette image ici). Factoriser dans une classe utilitaire partagée.
     private static Node iconePourFichier(String chemin) {
         if (chemin == null) {
             return Icons.document();
@@ -280,6 +282,11 @@ public class EmploiDuTempsPane extends BorderPane {
         return Icons.document();
     }
 
+    // TODO UX : contrairement à AccueilPane.rafraichir() qui resynchronise dateAffichee sur
+    // aujourd'hui, cette méthode ne réinitialise pas semaineAffichee. Un utilisateur qui a
+    // basculé manuellement sur "Semaine B" puis revient sur cet onglet un autre jour reste sur
+    // "Semaine B" au lieu de refléter la semaine réelle -> risque d'éditer la mauvaise semaine
+    // sans s'en rendre compte.
     public void rafraichir() {
         Parametres parametres = emploiDuTemps.getParametres();
         List<DayOfWeek> jours = parametres.getJoursAffiches();
@@ -439,6 +446,10 @@ public class EmploiDuTempsPane extends BorderPane {
         return -1;
     }
 
+    // TODO UX : déplacer/redimensionner un créneau ne se fait qu'à la souris (glisser le bloc /
+    // ses bords), sans raccourci clavier alternatif ni poignée visible (seul le curseur change
+    // au survol). Peu découvrable pour un nouvel utilisateur et inaccessible au clavier/trackpad
+    // peu précis.
     private final class BlocCreneau extends StackPane {
 
         private final Creneau creneau;
@@ -906,6 +917,9 @@ public class EmploiDuTempsPane extends BorderPane {
         }
 
         if (resultat.get() == boutonSupprimer) {
+            // TODO UX : suppression immédiate. Rattrapable via Ctrl+Z (pileAnnuler) mais ce
+            // raccourci n'est visible nulle part dans l'UI. Ajouter un retour visuel après
+            // suppression (ex. message "Créneau supprimé - Ctrl+Z pour annuler").
             enregistrerAvantModification();
             emploiDuTemps.supprimerCreneau(creneauExistant.getId());
             notifierChangement();
@@ -916,6 +930,9 @@ public class EmploiDuTempsPane extends BorderPane {
         Cours coursChoisi = choixCours.getValue();
         LocalTime debut = choixDebut.getValue();
         LocalTime fin = choixFin.getValue();
+        // TODO UX : validation seulement à la soumission (clic sur "Valider"). Désactiver
+        // préventivement le bouton Valider tant que cours/horaire ne sont pas valides plutôt
+        // que d'afficher l'erreur après coup.
         if (coursChoisi == null || debut == null || fin == null || !fin.isAfter(debut)) {
             Alert erreur = new Alert(Alert.AlertType.ERROR,
                     "Choisis un cours et une plage horaire valide (fin après le début).");
@@ -955,6 +972,8 @@ public class EmploiDuTempsPane extends BorderPane {
         }
     }
 
+    // TODO UX : aucun feedback visuel en cas de succès (seul un échec partiel affiche une
+    // alerte). L'utilisateur doit remarquer que l'application externe s'est ouverte de son côté.
     private void ouvrirFichiers(List<Fichier> fichiers) {
         if (fichiers.isEmpty()) {
             Alert alerte = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier sélectionné pour ce créneau.");

@@ -31,6 +31,7 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
+@SuppressWarnings("exports")
 public class App extends Application {
 
     private final DataStore dataStore = new DataStore();

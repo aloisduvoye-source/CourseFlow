@@ -117,6 +117,9 @@ public class CoursGestionPane extends BorderPane {
 
     private ScrollPane construireDetails() {
         champNom.setPromptText("Nom du cours");
+        // TODO UX : aucune validation du nom de cours (vide autorisé, doublons autorisés).
+        // Prévenir visuellement (ex. bordure rouge + message) quand le nom est vide ou déjà
+        // utilisé par un autre cours.
         champNom.textProperty().addListener((obs, ancien, nouveau) -> mettreAJourNomEnMemoire(nouveau));
         champNom.focusedProperty().addListener((obs, avaitFocus, aFocus) -> {
             if (!aFocus) {
@@ -616,6 +619,9 @@ public class CoursGestionPane extends BorderPane {
         notifierChangement();
     }
 
+    // TODO UX : suppression immédiate sans confirmation ni undo. Ajouter un mécanisme
+    // d'annulation léger (ex. dernier fichier retiré restaurable via Ctrl+Z), cohérent avec
+    // l'undo déjà présent dans EmploiDuTempsPane pour les créneaux.
     private void retirerFichier(Fichier fichier) {
         Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
         if (selectionne == null) {
@@ -656,6 +662,8 @@ public class CoursGestionPane extends BorderPane {
 
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setAlignment(Pos.CENTER);
+            // TODO UX : ajouter un Tooltip("Supprimer ce cours") - bouton icône seule, action
+            // destructrice non explicite au survol (contrairement à boutonTags de FichierCell).
             boutonSupprimer.setOnAction(e -> {
                 Cours cours = getItem();
                 if (cours != null) {
@@ -704,6 +712,8 @@ public class CoursGestionPane extends BorderPane {
 
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setAlignment(Pos.CENTER);
+            // TODO UX : ajouter un Tooltip("Retirer ce fichier") (voir boutonTags juste au-dessus,
+            // qui en a déjà un - incohérence entre les deux boutons icône de cette cellule).
             boutonSupprimer.setOnAction(e -> {
                 Fichier fichier = getItem();
                 if (fichier == null) {
@@ -798,6 +808,10 @@ public class CoursGestionPane extends BorderPane {
      * couleur personnalisée éventuelle, et de tous les fichiers de tous les cours qui
      * l'utilisaient.
      */
+    // TODO UX : cette suppression retire le tag de TOUS les fichiers de TOUS les cours
+    // instantanément, sans confirmation. Ajouter une Alert de confirmation avant l'appel
+    // (impact large, contrairement aux autres suppressions de ce fichier qui restent scopées
+    // à un seul fichier/cours).
     private void supprimerTagDuVocabulaire(String tag) {
         Parametres parametres = emploiDuTemps.getParametres();
         parametres.getTagsDisponibles().remove(tag);
