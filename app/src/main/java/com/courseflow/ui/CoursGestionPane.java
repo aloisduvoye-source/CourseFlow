@@ -806,10 +806,6 @@ public class CoursGestionPane extends BorderPane {
      * couleur personnalisée éventuelle, et de tous les fichiers de tous les cours qui
      * l'utilisaient.
      */
-    // TODO UX : cette suppression retire le tag de TOUS les fichiers de TOUS les cours
-    // instantanément, sans confirmation. Ajouter une Alert de confirmation avant l'appel
-    // (impact large, contrairement aux autres suppressions de ce fichier qui restent scopées
-    // à un seul fichier/cours).
     private void supprimerTagDuVocabulaire(String tag) {
         Parametres parametres = emploiDuTemps.getParametres();
         parametres.getTagsDisponibles().remove(tag);
@@ -875,6 +871,15 @@ public class CoursGestionPane extends BorderPane {
             boutonSupprimerTag.setOnAction(e -> {
                 String tag = getItem();
                 if (tag == null) {
+                    return;
+                }
+                Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Supprimer le tag \"" + tag + "\" ? Il sera retiré de tous les fichiers de tous "
+                                + "les cours qui l'utilisent.");
+                confirmation.setTitle("Supprimer le tag");
+                confirmation.setHeaderText(null);
+                Optional<ButtonType> reponse = confirmation.showAndWait();
+                if (reponse.isEmpty() || reponse.get() != ButtonType.OK) {
                     return;
                 }
                 supprimerTagDuVocabulaire(tag);
