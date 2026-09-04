@@ -71,6 +71,7 @@ public class ParametresPane extends BorderPane {
     private final Runnable surChangement;
     private final Pane grilleBlocs = new Pane();
     private final HBox ligneGrille = new HBox();
+    private final StackPane conteneurCentre = new StackPane();
 
     public ParametresPane(EmploiDuTemps emploiDuTemps, Path fichierDonnees, Runnable surChangement) {
         this.parametres = emploiDuTemps.getParametres();
@@ -105,7 +106,8 @@ public class ParametresPane extends BorderPane {
 
         ScrollPane defilement = new ScrollPane(contenu);
         defilement.setFitToWidth(true);
-        setCenter(defilement);
+        conteneurCentre.getChildren().add(defilement);
+        setCenter(conteneurCentre);
     }
 
     private VBox construireSectionJours() {
@@ -415,11 +417,21 @@ public class ParametresPane extends BorderPane {
         notifierChangement();
     }
 
-    // TODO UX : suppression immédiate sans confirmation ni undo, contrairement aux créneaux de
-    // l'emploi du temps qui bénéficient d'un Ctrl+Z. Ajouter un mécanisme équivalent ici.
     private void supprimerBloc(PlageHoraire bloc) {
         List<PlageHoraire> blocs = new ArrayList<>(parametres.getBlocs());
+        int index = blocs.indexOf(bloc);
         blocs.remove(bloc);
+        parametres.setBlocs(blocs);
+        redessinerGrilleBlocs();
+        notifierChangement();
+
+        Toast.montrer(conteneurCentre, "Bloc horaire supprimé", "Annuler", () -> restaurerBloc(bloc, index));
+    }
+
+    private void restaurerBloc(PlageHoraire bloc, int indexOrigine) {
+        List<PlageHoraire> blocs = new ArrayList<>(parametres.getBlocs());
+        int index = Math.max(0, Math.min(indexOrigine, blocs.size()));
+        blocs.add(index, bloc);
         parametres.setBlocs(blocs);
         redessinerGrilleBlocs();
         notifierChangement();
