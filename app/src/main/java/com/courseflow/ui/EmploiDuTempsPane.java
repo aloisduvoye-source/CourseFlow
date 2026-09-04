@@ -918,6 +918,24 @@ public class EmploiDuTempsPane extends BorderPane {
             noeudAnnuler.setManaged(false);
         }
 
+        // Désactive préventivement Valider/Ouvrir tant que cours + horaire valide ne sont pas
+        // choisis, plutôt que de laisser cliquer puis afficher une erreur après coup.
+        Button noeudValider = (Button) dialogue.getDialogPane().lookupButton(boutonValider);
+        Runnable actualiserValiditeFormulaire = () -> {
+            boolean valide = choixCours.getValue() != null && choixDebut.getValue() != null
+                    && choixFin.getValue() != null && choixFin.getValue().isAfter(choixDebut.getValue());
+            if (noeudValider != null) {
+                noeudValider.setDisable(!valide);
+            }
+            if (noeudOuvrir != null) {
+                noeudOuvrir.setDisable(!valide);
+            }
+        };
+        choixCours.valueProperty().addListener((obs, ancien, nouveau) -> actualiserValiditeFormulaire.run());
+        choixDebut.valueProperty().addListener((obs, ancien, nouveau) -> actualiserValiditeFormulaire.run());
+        choixFin.valueProperty().addListener((obs, ancien, nouveau) -> actualiserValiditeFormulaire.run());
+        actualiserValiditeFormulaire.run();
+
         actualiserBanniere.run();
 
         Optional<ButtonType> resultat = dialogue.showAndWait();
@@ -937,9 +955,6 @@ public class EmploiDuTempsPane extends BorderPane {
         Cours coursChoisi = choixCours.getValue();
         LocalTime debut = choixDebut.getValue();
         LocalTime fin = choixFin.getValue();
-        // TODO UX : validation seulement à la soumission (clic sur "Valider"). Désactiver
-        // préventivement le bouton Valider tant que cours/horaire ne sont pas valides plutôt
-        // que d'afficher l'erreur après coup.
         if (coursChoisi == null || debut == null || fin == null || !fin.isAfter(debut)) {
             Alert erreur = new Alert(Alert.AlertType.ERROR,
                     "Choisis un cours et une plage horaire valide (fin après le début).");
