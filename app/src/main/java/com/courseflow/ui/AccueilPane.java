@@ -63,6 +63,7 @@ public class AccueilPane extends BorderPane {
     private final Label libelleJour = new Label();
     private final Label libelleDate = new Label();
     private final VBox listeCartes = new VBox(14);
+    private final StackPane conteneurCentre = new StackPane();
 
     private LocalDate dateAffichee;
 
@@ -102,7 +103,8 @@ public class AccueilPane extends BorderPane {
         HBox ligne = new HBox(construireFlecheJour(Icons.flecheGauche(), -1), defilement, construireFlecheJour(Icons.flecheDroite(), 1));
         ligne.setAlignment(Pos.CENTER);
 
-        setCenter(ligne);
+        conteneurCentre.getChildren().add(ligne);
+        setCenter(conteneurCentre);
 
         rafraichir();
     }
@@ -349,8 +351,6 @@ public class AccueilPane extends BorderPane {
         fondu.play();
     }
 
-    // TODO UX : aucun feedback visuel en cas de succès (seul un échec partiel affiche une
-    // alerte). L'utilisateur doit remarquer que l'application externe s'est ouverte de son côté.
     private void ouvrirFichiersDuCreneau(Creneau creneau) {
         List<Fichier> fichiers = emploiDuTemps.fichiersPourCreneau(creneau);
         if (fichiers.isEmpty()) {
@@ -361,7 +361,9 @@ public class AccueilPane extends BorderPane {
             return;
         }
         List<String> echecs = OuvreurFichiers.ouvrir(fichiers);
-        if (!echecs.isEmpty()) {
+        if (echecs.isEmpty()) {
+            Toast.montrer(conteneurCentre, fichiers.size() == 1 ? "1 fichier ouvert" : fichiers.size() + " fichiers ouverts");
+        } else {
             Alert alerte = new Alert(Alert.AlertType.WARNING,
                     "Certains fichiers n'ont pas pu être ouverts :\n" + String.join("\n", echecs));
             alerte.setTitle("Ouverture partielle");

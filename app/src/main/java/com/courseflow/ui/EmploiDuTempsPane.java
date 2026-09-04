@@ -972,8 +972,6 @@ public class EmploiDuTempsPane extends BorderPane {
         }
     }
 
-    // TODO UX : aucun feedback visuel en cas de succès (seul un échec partiel affiche une
-    // alerte). L'utilisateur doit remarquer que l'application externe s'est ouverte de son côté.
     private void ouvrirFichiers(List<Fichier> fichiers) {
         if (fichiers.isEmpty()) {
             Alert alerte = new Alert(Alert.AlertType.INFORMATION, "Aucun fichier sélectionné pour ce créneau.");
@@ -983,7 +981,9 @@ public class EmploiDuTempsPane extends BorderPane {
             return;
         }
         List<String> echecs = OuvreurFichiers.ouvrir(fichiers);
-        if (!echecs.isEmpty()) {
+        if (echecs.isEmpty()) {
+            Toast.montrer(conteneurCentre, fichiers.size() == 1 ? "1 fichier ouvert" : fichiers.size() + " fichiers ouverts");
+        } else {
             Alert alerte = new Alert(Alert.AlertType.WARNING,
                     "Certains fichiers n'ont pas pu être ouverts :\n" + String.join("\n", echecs));
             alerte.setTitle("Ouverture partielle");
