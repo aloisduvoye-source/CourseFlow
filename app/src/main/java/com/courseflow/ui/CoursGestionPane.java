@@ -19,6 +19,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -73,8 +74,9 @@ public class CoursGestionPane extends BorderPane {
     private final TextField champNom = new TextField();
     private final ColorPicker selecteurCouleur = new ColorPicker();
     private final CheckBox caseCoursDefaut = new CheckBox("Cours par défaut");
-    private final TitledPane panneauCoursDefaut = new TitledPane();
-    private final ListView<Fichier> listeFichiersCoursDefaut = new ListView<>();
+    private final TitledPane panneauFichiersLies = new TitledPane("Lier des fichiers depuis un autre cours", null);
+    private final ComboBox<Cours> choixCoursSource = new ComboBox<>();
+    private final ListView<Fichier> listeFichiersCoursSource = new ListView<>();
     private final Label messageVide = new Label("Sélectionnez un cours ou créez-en un nouveau.");
     private final VBox panneauDetails = new VBox(12);
     private final ScrollPane defilementDetails = new ScrollPane();
@@ -138,16 +140,18 @@ public class CoursGestionPane extends BorderPane {
 
         caseCoursDefaut.setOnAction(e -> toggleCoursDefaut());
 
-        listeFichiersCoursDefaut.setPrefHeight(140);
-        listeFichiersCoursDefaut.setCellFactory(CheckBoxListCell.forListView(this::proprieteFichierLie));
+        choixCoursSource.setMaxWidth(Double.MAX_VALUE);
+        choixCoursSource.setOnAction(e -> actualiserListeFichiersSource());
+        listeFichiersCoursSource.setPrefHeight(140);
+        listeFichiersCoursSource.setCellFactory(CheckBoxListCell.forListView(this::proprieteFichierLie));
 
-        Button boutonToutCocherDefaut = new Button("Tout cocher");
-        boutonToutCocherDefaut.setOnAction(e -> toutLierFichiersCoursDefaut(true));
-        Button boutonToutDecocherDefaut = new Button("Tout décocher");
-        boutonToutDecocherDefaut.setOnAction(e -> toutLierFichiersCoursDefaut(false));
-        HBox boutonsCoursDefaut = new HBox(8, boutonToutCocherDefaut, boutonToutDecocherDefaut);
-        panneauCoursDefaut.setContent(new VBox(4, listeFichiersCoursDefaut, boutonsCoursDefaut));
-        panneauCoursDefaut.setExpanded(false);
+        Button boutonToutCocherSource = new Button("Tout cocher");
+        boutonToutCocherSource.setOnAction(e -> toutLierFichiersSource(true));
+        Button boutonToutDecocherSource = new Button("Tout décocher");
+        boutonToutDecocherSource.setOnAction(e -> toutLierFichiersSource(false));
+        HBox boutonsFichiersSource = new HBox(8, boutonToutCocherSource, boutonToutDecocherSource);
+        panneauFichiersLies.setContent(new VBox(6, choixCoursSource, listeFichiersCoursSource, boutonsFichiersSource));
+        panneauFichiersLies.setExpanded(false);
 
         listeFichiers.setCellFactory(vue -> new FichierCell());
         listeFichiers.setItems(fichiersFiltres);
@@ -187,7 +191,7 @@ public class CoursGestionPane extends BorderPane {
                 titreNomCouleur, ligneNomCouleur, caseCoursDefaut,
                 titreFichiers, rechercheFichiers, listeFichiers, boutonsFichiers,
                 titreDossiersReferences, conteneurDossiersReferences,
-                panneauCoursDefaut);
+                panneauFichiersLies);
         panneauDetails.setPadding(new Insets(0, 0, 0, 12));
 
         defilementDetails.setContent(panneauDetails);
@@ -227,17 +231,30 @@ public class CoursGestionPane extends BorderPane {
         rafraichirDossiersReferences(cours);
 
         UUID coursDefautId = emploiDuTemps.getParametres().getCoursDefautId();
-        boolean estCoursDefaut = cours.getId().equals(coursDefautId);
-        caseCoursDefaut.setSelected(estCoursDefaut);
+        caseCoursDefaut.setSelected(cours.getId().equals(coursDefautId));
 
-        Optional<Cours> coursDefaut = emploiDuTemps.trouverCoursDefaut();
-        boolean afficherPanneauDefaut = coursDefaut.isPresent() && !estCoursDefaut;
-        panneauCoursDefaut.setVisible(afficherPanneauDefaut);
-        panneauCoursDefaut.setManaged(afficherPanneauDefaut);
-        if (afficherPanneauDefaut) {
-            panneauCoursDefaut.setText("Cours par défaut : " + coursDefaut.get().getNom());
-            listeFichiersCoursDefaut.getItems().setAll(coursDefaut.get().getFichiers());
+        // Panneau généralisé : lier des fichiers depuis n'importe quel autre cours (pas
+        // seulement le "cours par défaut", qui reste juste pré-sélectionné par commodité).
+        List<Cours> autresCours = emploiDuTemps.getCours().stream()
+                .filter(c -> !c.getId().equals(cours.getId()))
+                .toList();
+        boolean afficherPanneauLies = !autresCours.isEmpty();
+        panneauFichiersLies.setVisible(afficherPanneauLies);
+        panneauFichiersLies.setManaged(afficherPanneauLies);
+        if (afficherPanneauLies) {
+            Cours preselection = autresCours.stream()
+                    .filter(c -> c.getId().equals(coursDefautId))
+                    .findFirst()
+                    .orElse(autresCours.get(0));
+            choixCoursSource.getItems().setAll(autresCours);
+            choixCoursSource.setValue(preselection);
+            actualiserListeFichiersSource();
         }
+    }
+
+    private void actualiserListeFichiersSource() {
+        Cours coursSource = choixCoursSource.getValue();
+        listeFichiersCoursSource.getItems().setAll(coursSource != null ? coursSource.getFichiers() : List.of());
     }
 
     private void rafraichirDossiersReferences(Cours cours) {
@@ -354,22 +371,22 @@ public class CoursGestionPane extends BorderPane {
     }
 
     /**
-     * Lie ou délie en une fois tous les fichiers du cours par défaut affichés dans
-     * {@link #listeFichiersCoursDefaut}, pour éviter de cocher/décocher un par un.
+     * Lie ou délie en une fois tous les fichiers du cours source affichés dans
+     * {@link #listeFichiersCoursSource}, pour éviter de cocher/décocher un par un.
      */
-    private void toutLierFichiersCoursDefaut(boolean coche) {
+    private void toutLierFichiersSource(boolean coche) {
         Cours coursActuel = listeCours.getSelectionModel().getSelectedItem();
         if (coursActuel == null) {
             return;
         }
-        for (Fichier fichier : listeFichiersCoursDefaut.getItems()) {
+        for (Fichier fichier : listeFichiersCoursSource.getItems()) {
             if (coche) {
                 coursActuel.ajouterFichierLie(fichier.getId());
             } else {
                 coursActuel.retirerFichierLie(fichier.getId());
             }
         }
-        listeFichiersCoursDefaut.refresh();
+        listeFichiersCoursSource.refresh();
         tousLesFichiers.setAll(emploiDuTemps.fichiersVisibles(coursActuel));
         notifierChangement();
     }
@@ -399,6 +416,13 @@ public class CoursGestionPane extends BorderPane {
         return selectionne != null && selectionne.getFichiersLies().contains(fichier.getId());
     }
 
+    /** @return le cours propriétaire d'un fichier lié, pour l'afficher (ex. "(lié depuis X)"). */
+    private Optional<Cours> trouverCoursProprietaire(Fichier fichier) {
+        return emploiDuTemps.getCours().stream()
+                .filter(c -> c.getFichiers().contains(fichier))
+                .findFirst();
+    }
+
     private void delierFichier(Fichier fichier) {
         Cours selectionne = listeCours.getSelectionModel().getSelectedItem();
         if (selectionne == null) {
@@ -406,7 +430,7 @@ public class CoursGestionPane extends BorderPane {
         }
         selectionne.retirerFichierLie(fichier.getId());
         tousLesFichiers.remove(fichier);
-        listeFichiersCoursDefaut.refresh();
+        listeFichiersCoursSource.refresh();
         notifierChangement();
     }
 
@@ -783,7 +807,7 @@ public class CoursGestionPane extends BorderPane {
             String texte = fichier.getNomAffichage() != null && !fichier.getNomAffichage().isBlank()
                     ? fichier.getNomAffichage() : fichier.getChemin();
             if (estFichierLie(fichier)) {
-                texte += " (lié)";
+                texte += " (lié" + trouverCoursProprietaire(fichier).map(c -> " depuis " + c.getNom()).orElse("") + ")";
             }
             libelle.setText(texte);
 
