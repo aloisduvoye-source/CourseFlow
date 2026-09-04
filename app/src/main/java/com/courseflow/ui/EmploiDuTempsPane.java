@@ -112,13 +112,13 @@ public class EmploiDuTempsPane extends BorderPane {
 
         defilement.setContent(ligneColonnes);
         defilement.setFitToWidth(false);
-        defilement.viewportBoundsProperty().addListener((obs, ancien, nouveau) -> rafraichir());
+        defilement.viewportBoundsProperty().addListener((obs, ancien, nouveau) -> redessiner());
 
         VBox.setVgrow(defilement, Priority.ALWAYS);
         conteneurCentre.getChildren().add(new VBox(construireSelecteurSemaine(), ligneEntetes, defilement));
         setCenter(conteneurCentre);
 
-        rafraichir();
+        redessiner();
     }
 
     /**
@@ -131,7 +131,7 @@ public class EmploiDuTempsPane extends BorderPane {
         }
         if (creneau.getTypeSemaine() != TypeSemaine.TOUTES && creneau.getTypeSemaine() != semaineAffichee) {
             semaineAffichee = creneau.getTypeSemaine();
-            rafraichir();
+            redessiner();
         }
         ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut(), creneau.getHeureFin());
     }
@@ -144,15 +144,15 @@ public class EmploiDuTempsPane extends BorderPane {
         boutonB.setToggleGroup(groupe);
         boutonA.setSelected(semaineAffichee == TypeSemaine.A);
         boutonB.setSelected(semaineAffichee == TypeSemaine.B);
-        boutonA.setOnAction(e -> { semaineAffichee = TypeSemaine.A; rafraichir(); });
-        boutonB.setOnAction(e -> { semaineAffichee = TypeSemaine.B; rafraichir(); });
+        boutonA.setOnAction(e -> { semaineAffichee = TypeSemaine.A; redessiner(); });
+        boutonB.setOnAction(e -> { semaineAffichee = TypeSemaine.B; redessiner(); });
 
         CheckBox caseGuides = new CheckBox("Afficher les guides");
         caseGuides.setSelected(emploiDuTemps.getParametres().isAfficherGuidesBlocs());
         caseGuides.setOnAction(e -> {
             emploiDuTemps.getParametres().setAfficherGuidesBlocs(caseGuides.isSelected());
             notifierChangement();
-            rafraichir();
+            redessiner();
         });
 
         Region espaceur = new Region();
@@ -199,7 +199,7 @@ public class EmploiDuTempsPane extends BorderPane {
     private void restaurer(List<Creneau> etat) {
         emploiDuTemps.setCreneaux(etat);
         notifierChangement();
-        rafraichir();
+        redessiner();
     }
 
     private List<Creneau> copierCreneaux() {
@@ -284,12 +284,19 @@ public class EmploiDuTempsPane extends BorderPane {
         return Icons.document();
     }
 
-    // TODO UX : contrairement à AccueilPane.rafraichir() qui resynchronise dateAffichee sur
-    // aujourd'hui, cette méthode ne réinitialise pas semaineAffichee. Un utilisateur qui a
-    // basculé manuellement sur "Semaine B" puis revient sur cet onglet un autre jour reste sur
-    // "Semaine B" au lieu de refléter la semaine réelle -> risque d'éditer la mauvaise semaine
-    // sans s'en rendre compte.
+    /**
+     * Resynchronise l'affichage sur la semaine réelle (comme {@link AccueilPane#rafraichir()}
+     * le fait pour la date), puis redessine. Appelé à chaque affichage de l'onglet, pour ne
+     * pas laisser un utilisateur éditer par erreur une semaine A/B qu'il avait consultée
+     * manuellement lors d'une précédente visite.
+     */
     public void rafraichir() {
+        semaineAffichee = emploiDuTemps.getParametres().semainePour(LocalDate.now());
+        redessiner();
+    }
+
+    /** Redessine la grille sans toucher à {@link #semaineAffichee} (déplacement, undo, etc.). */
+    private void redessiner() {
         Parametres parametres = emploiDuTemps.getParametres();
         List<DayOfWeek> jours = parametres.getJoursAffiches();
         if (!jours.isEmpty()) {
@@ -607,7 +614,7 @@ public class EmploiDuTempsPane extends BorderPane {
             // Reconstruit toute la grille (pas seulement ce bloc) : le jour de départ peut être
             // devenu vide (ou le jour d'arrivée ne plus l'être), ce qui doit mettre à jour le
             // libellé "Journée libre"/"Pas de cours" affiché pour ce jour.
-            rafraichir();
+            redessiner();
             e.consume();
         }
     }
@@ -922,7 +929,7 @@ public class EmploiDuTempsPane extends BorderPane {
             enregistrerAvantModification();
             emploiDuTemps.supprimerCreneau(creneauExistant.getId());
             notifierChangement();
-            rafraichir();
+            redessiner();
             Toast.montrer(conteneurCentre, "Créneau supprimé", "Annuler", this::annuler);
             return;
         }
@@ -964,7 +971,7 @@ public class EmploiDuTempsPane extends BorderPane {
         creneau.setTypeSemaine(choixSemaine.getValue());
 
         notifierChangement();
-        rafraichir();
+        redessiner();
 
         if (resultat.get() == boutonOuvrir) {
             List<Fichier> fichiersAOuvrir = emploiDuTemps.fichiersPourCreneau(creneau);
