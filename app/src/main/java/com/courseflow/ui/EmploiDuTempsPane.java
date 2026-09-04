@@ -19,6 +19,7 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -34,6 +35,7 @@ import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
@@ -431,10 +433,6 @@ public class EmploiDuTempsPane extends BorderPane {
         return -1;
     }
 
-    // TODO UX : déplacer/redimensionner un créneau ne se fait qu'à la souris (glisser le bloc /
-    // ses bords), sans raccourci clavier alternatif ni poignée visible (seul le curseur change
-    // au survol). Peu découvrable pour un nouvel utilisateur et inaccessible au clavier/trackpad
-    // peu précis.
     private final class BlocCreneau extends StackPane {
 
         private final Creneau creneau;
@@ -461,20 +459,42 @@ public class EmploiDuTempsPane extends BorderPane {
             meta.setMouseTransparent(true);
             meta.setStyle("-fx-text-fill: rgba(255,255,255,0.88); -fx-font-size: 10.5;");
             contenu.setMouseTransparent(true);
-            getChildren().add(contenu);
+            getChildren().addAll(contenu, poignee(Pos.TOP_CENTER), poignee(Pos.BOTTOM_CENTER));
             setAlignment(Pos.TOP_LEFT);
             setPadding(new Insets(6, 6, 6, 8));
             setPrefWidth(largeurColonneJour - 6);
-            setStyle(styleFond());
+            actualiserStyleFond(false);
 
             actualiser(Math.max(0, indexDuJour(creneau.getJour())),
                     toMinutes(creneau.getHeureDebut()), toMinutes(creneau.getHeureFin()));
+
+            // Poignées visibles + tooltip : le glisser-déposer souris (bloc = déplacer, bords =
+            // redimensionner) n'était signalé qu'au survol par un changement de curseur, peu
+            // découvrable. Le clavier (flèches/Entrée/Suppr, une fois le bloc focus via Tab ou
+            // clic) offre une alternative complète pour qui ne peut pas glisser précisément.
+            setFocusTraversable(true);
+            Tooltip.install(this, new Tooltip(
+                    "Glisser pour déplacer, les bords pour redimensionner, clic pour modifier.\n"
+                            + "Au clavier : flèches pour déplacer, Entrée pour modifier, Suppr pour supprimer."));
+            focusedProperty().addListener((obs, ancienFocus, aFocus) -> actualiserStyleFond(aFocus));
 
             setOnMousePressed(this::surAppui);
             setOnMouseDragged(this::surGlissement);
             setOnMouseReleased(this::surRelachement);
             setOnMouseMoved(this::surSurvol);
             setOnMouseClicked(Event::consume);
+            setOnKeyPressed(this::surTouche);
+        }
+
+        private Region poignee(Pos position) {
+            Region poignee = new Region();
+            poignee.setPrefSize(28, 3);
+            poignee.setMaxSize(28, 3);
+            poignee.setStyle("-fx-background-color: rgba(255,255,255,0.55); -fx-background-radius: 2;");
+            poignee.setMouseTransparent(true);
+            StackPane.setAlignment(poignee, position);
+            StackPane.setMargin(poignee, new Insets(3, 0, 3, 0));
+            return poignee;
         }
 
         private String styleFond() {
@@ -482,6 +502,10 @@ public class EmploiDuTempsPane extends BorderPane {
             String couleur = cours != null && cours.getCouleur() != null ? cours.getCouleur() : Couleurs.COURS_SANS_COULEUR;
             return "-fx-background-color: " + couleur + "; -fx-background-radius: 6;"
                     + " -fx-border-color: derive(" + couleur + ", -15%); -fx-border-width: 1; -fx-border-radius: 6;";
+        }
+
+        private void actualiserStyleFond(boolean focus) {
+            setStyle(styleFond() + (focus ? " -fx-border-color: white; -fx-border-width: 2;" : ""));
         }
 
         private void actualiser(int dayIndex, int debutMinutes, int finMinutes) {
@@ -526,6 +550,7 @@ public class EmploiDuTempsPane extends BorderPane {
         }
 
         private void surAppui(MouseEvent e) {
+            requestFocus();
             pressSceneX = e.getSceneX();
             pressSceneY = e.getSceneY();
             dayIndexInitial = Math.max(0, indexDuJour(creneau.getJour()));
@@ -592,6 +617,63 @@ public class EmploiDuTempsPane extends BorderPane {
             // libellé "Journée libre"/"Pas de cours" affiché pour ce jour.
             redessiner();
             e.consume();
+        }
+
+        /** Alternative clavier au glisser-déposer souris, une fois le bloc sélectionné (Tab/clic). */
+        private void surTouche(KeyEvent e) {
+            switch (e.getCode()) {
+                case ENTER, SPACE -> {
+                    ouvrirDialogueCreneau(creneau, creneau.getJour(), creneau.getHeureDebut(), creneau.getHeureFin());
+                    e.consume();
+                }
+                case DELETE, BACK_SPACE -> {
+                    enregistrerAvantModification();
+                    emploiDuTemps.supprimerCreneau(creneau.getId());
+                    notifierChangement();
+                    redessiner();
+                    Toast.montrer(conteneurCentre, "Créneau supprimé", "Annuler", () -> annuler());
+                    e.consume();
+                }
+                case UP -> { deplacerParClavier(0, -pasMinutes); e.consume(); }
+                case DOWN -> { deplacerParClavier(0, pasMinutes); e.consume(); }
+                case LEFT -> { deplacerParClavier(-1, 0); e.consume(); }
+                case RIGHT -> { deplacerParClavier(1, 0); e.consume(); }
+                default -> { }
+            }
+        }
+
+        private void deplacerParClavier(int deltaJours, int deltaMinutes) {
+            int minutesDebutActuel = toMinutes(creneau.getHeureDebut());
+            int duree = toMinutes(creneau.getHeureFin()) - minutesDebutActuel;
+            int nouveauDebut = clamp(minutesDebutActuel + deltaMinutes,
+                    toMinutes(heureDebutGrille), toMinutes(heureFinGrille) - duree);
+            int dayIndexActuel = Math.max(0, indexDuJour(creneau.getJour()));
+            int nouveauDayIndex = clamp(dayIndexActuel + deltaJours, 0, joursAffiches.length - 1);
+            if (nouveauDebut == minutesDebutActuel && nouveauDayIndex == dayIndexActuel) {
+                return;
+            }
+            enregistrerAvantModification();
+            creneau.setJour(joursAffiches[nouveauDayIndex]);
+            creneau.setHeureDebut(minutesVersHeure(nouveauDebut));
+            creneau.setHeureFin(minutesVersHeure(nouveauDebut + duree));
+            notifierChangement();
+            redessiner();
+            // redessiner() reconstruit tous les BlocCreneau : sans ça, le focus clavier serait
+            // perdu à chaque flèche et il faudrait re-cliquer/re-tabuler entre chaque déplacement.
+            restaurerFocusCreneau(creneau.getId());
+        }
+    }
+
+    private void restaurerFocusCreneau(UUID creneauId) {
+        for (Node colonne : ligneColonnes.getChildren()) {
+            if (colonne instanceof Pane grille) {
+                for (Node enfant : grille.getChildren()) {
+                    if (enfant instanceof BlocCreneau bloc && bloc.creneau.getId().equals(creneauId)) {
+                        bloc.requestFocus();
+                        return;
+                    }
+                }
+            }
         }
     }
 
