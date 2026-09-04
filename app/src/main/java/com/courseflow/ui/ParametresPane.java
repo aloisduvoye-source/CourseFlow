@@ -9,6 +9,7 @@ import javafx.event.Event;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.control.Accordion;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -19,6 +20,7 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TitledPane;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -85,24 +87,26 @@ public class ParametresPane extends BorderPane {
         grilleBlocs.setOnMouseClicked(this::surClicGrilleVide);
         actualiserGrilleBlocs();
 
-        Label titreBlocs = titreSection("Blocs horaires (identiques chaque jour)");
         Label aideBlocs = new Label("Clique dans la zone libre pour ajouter un bloc, glisse-le pour le déplacer "
                 + "ou ses bords pour le redimensionner, clique dessus pour le modifier ou le supprimer. "
                 + "Un nouveau créneau ne pourra être créé dans l'emploi du temps que sur ces horaires.");
         aideBlocs.setWrapText(true);
         aideBlocs.setMaxWidth(420);
 
-        // TODO UX : page à défilement continu regroupant des réglages hétérogènes (jours,
-        // incrément, plage horaire, blocs horaires, semaines alternées, sauvegarde) sans
-        // sous-navigation. Envisager des sections repliables (TitledPane) ou des onglets
-        // internes pour réduire la densité perçue à la première visite.
-        VBox contenu = new VBox(20,
-                construireSectionJours(),
-                construireSectionIncrement(),
-                construireSectionPlageGrille(),
-                new VBox(6, titreBlocs, aideBlocs, ligneGrille),
-                construireSectionSemainesAlternees(),
-                construireSectionSauvegarde());
+        // Sections repliables plutôt qu'un unique défilement continu : réduit la densité perçue
+        // à la première visite (une seule section ouverte à la fois) tout en gardant tous les
+        // réglages accessibles en un clic.
+        TitledPane paneAffichage = new TitledPane("Jours et grille", new VBox(20,
+                construireSectionJours(), construireSectionIncrement(), construireSectionPlageGrille()));
+        TitledPane paneBlocs = new TitledPane("Blocs horaires (identiques chaque jour)",
+                new VBox(6, aideBlocs, ligneGrille));
+        TitledPane paneSemaines = new TitledPane("Semaines alternées", construireSectionSemainesAlternees());
+        TitledPane paneSauvegarde = new TitledPane("Sauvegarde", construireSectionSauvegarde());
+
+        Accordion accordion = new Accordion(paneAffichage, paneBlocs, paneSemaines, paneSauvegarde);
+        accordion.setExpandedPane(paneAffichage);
+
+        VBox contenu = new VBox(accordion);
         contenu.setPadding(new Insets(0, 12, 0, 0));
 
         ScrollPane defilement = new ScrollPane(contenu);
@@ -228,7 +232,7 @@ public class ParametresPane extends BorderPane {
         HBox ligneDate = new HBox(8, selecteurDate, boutonEffacer);
         ligneDate.setAlignment(Pos.CENTER_LEFT);
 
-        return new VBox(6, titreSection("Semaines alternées"), aide, ligneDate, libelleSemaineActuelle);
+        return new VBox(6, aide, ligneDate, libelleSemaineActuelle);
     }
 
     private VBox construireSectionSauvegarde() {
@@ -239,7 +243,7 @@ public class ParametresPane extends BorderPane {
         boutonImporter.setOnAction(e -> importerConfiguration());
 
         HBox boutons = new HBox(8, boutonExporter, boutonImporter);
-        return new VBox(6, titreSection("Sauvegarde"), boutons);
+        return new VBox(6, boutons);
     }
 
     private void exporterConfiguration() {
