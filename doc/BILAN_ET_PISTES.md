@@ -1,7 +1,8 @@
 # CourseFlow — Bilan complet & pistes d'évolution à long terme
 
-> **Nature de ce document** : contrairement à la Roadmap du [README.md](README.md), qui suit
-> l'avancement réel du projet phase par phase, ce document est un inventaire volontairement
+> **Nature de ce document** : contrairement à la Roadmap du
+> [Guide développeur](GUIDE_DEVELOPPEUR.md#état-davancement--roadmap), qui suit l'avancement réel
+> du projet phase par phase, ce document est un inventaire volontairement
 > large et spéculatif — un brainstorm structuré de tout ce qui pourrait faire évoluer CourseFlow,
 > du correctif mineur à l'idée de rupture. Rien ici n'est engagé ni priorisé par défaut : c'est
 > une réserve d'idées à piocher selon l'usage réel, pas un plan de développement. Écrit le
