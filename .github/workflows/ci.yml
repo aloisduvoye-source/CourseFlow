@@ -1,0 +1,25 @@
+name: CI
+
+# Build + tests à chaque push et pull request, pour que les régressions (surtout sur `core`,
+# le seul module testé aujourd'hui) soient détectées avant la revue plutôt que par discipline
+# manuelle.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer le JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Compiler et tester
+        run: mvn -B verify
