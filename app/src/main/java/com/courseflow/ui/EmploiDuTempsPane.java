@@ -98,6 +98,7 @@ public class EmploiDuTempsPane extends BorderPane {
     private LocalTime heureFinGrille = LocalTime.of(20, 0);
     private final Deque<List<Creneau>> pileAnnuler = new ArrayDeque<>();
     private final Deque<List<Creneau>> pileRetablir = new ArrayDeque<>();
+    private final StackPane conteneurCentre = new StackPane();
     private TypeSemaine semaineAffichee;
 
     public EmploiDuTempsPane(EmploiDuTemps emploiDuTemps, Runnable surChangement) {
@@ -114,7 +115,8 @@ public class EmploiDuTempsPane extends BorderPane {
         defilement.viewportBoundsProperty().addListener((obs, ancien, nouveau) -> rafraichir());
 
         VBox.setVgrow(defilement, Priority.ALWAYS);
-        setCenter(new VBox(construireSelecteurSemaine(), ligneEntetes, defilement));
+        conteneurCentre.getChildren().add(new VBox(construireSelecteurSemaine(), ligneEntetes, defilement));
+        setCenter(conteneurCentre);
 
         rafraichir();
     }
@@ -917,13 +919,11 @@ public class EmploiDuTempsPane extends BorderPane {
         }
 
         if (resultat.get() == boutonSupprimer) {
-            // TODO UX : suppression immédiate. Rattrapable via Ctrl+Z (pileAnnuler) mais ce
-            // raccourci n'est visible nulle part dans l'UI. Ajouter un retour visuel après
-            // suppression (ex. message "Créneau supprimé - Ctrl+Z pour annuler").
             enregistrerAvantModification();
             emploiDuTemps.supprimerCreneau(creneauExistant.getId());
             notifierChangement();
             rafraichir();
+            Toast.montrer(conteneurCentre, "Créneau supprimé", "Annuler", this::annuler);
             return;
         }
 
