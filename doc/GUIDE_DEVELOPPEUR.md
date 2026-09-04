@@ -10,7 +10,8 @@
   2.1.0 (thème Primer, clair/sombre)
 - **Build** : Maven multi-module — voir [Architecture](#architecture) ci-dessous
 - **Persistance** : JSON local (Jackson 2.17.2 + `jackson-datatype-jsr310`)
-- **Tests** : JUnit 5.10.3 (module `core` uniquement pour l'instant)
+- **Tests** : JUnit 5.10.3 (`core` : modèle/persistance/CLI) + [TestFX](https://github.com/TestFX/TestFX)
+  4.0.18 (`app` : parcours UI critiques — création de cours, création de créneau, undo/redo)
 - **Ouverture de fichiers** : commande native du système (`xdg-open` sur Linux, `open` sur macOS,
   `start` sur Windows) via `ProcessBuilder`. `java.awt.Desktop` a été écarté : l'initialiser dans
   une appli JavaFX sur Linux charge un toolkit GTK concurrent de celui de JavaFX et fait planter
@@ -105,8 +106,11 @@ modification de `core`.)
 ```
 mvn test
 ```
-Couvre le module `core` (modèle, persistance, CLI) — voir [Roadmap](#état-davancement--roadmap)
-pour l'état de la couverture côté `app`.
+Couvre `core` (modèle, persistance, CLI) et, désormais, les parcours critiques de `app` (créer un
+cours, créer un créneau, annuler/rétablir) pilotés via TestFX — voir
+[Roadmap](#état-davancement--roadmap) pour l'état détaillé de la couverture. Les tests `app`
+ouvrent de vraies fenêtres JavaFX : sur une machine sans écran (ex. un conteneur CI), lancer sous
+`xvfb-run -a mvn test` (voir [.github/workflows/ci.yml](../.github/workflows/ci.yml)).
 
 ### Installer la commande `lecture` en mode dev
 ```
@@ -215,11 +219,16 @@ la rampe `-color-accent-*` d'AtlantaFX (thème Primer) et sont chargés en plus 
   créer/renommer/colorer un cours, lui attacher des fichiers (sélection individuelle, dossier réel
   référencé et actualisable, ou lien web) ou en retirer, supprimer un cours (icône corbeille).
   Recherche/filtre par nom ou tag ; étiquettes choisies dans un vocabulaire prédéfini/extensible ;
-  liaison de fichiers depuis n'importe quel autre cours. Testé manuellement dans l'application.
+  liaison de fichiers depuis n'importe quel autre cours. Création/renommage de cours couverts par
+  [CoursGestionPaneTest](../app/src/test/java/com/courseflow/ui/CoursGestionPaneTest.java) (TestFX),
+  le reste testé manuellement dans l'application.
 - **Emploi du temps (UI)** ✅ — [EmploiDuTempsPane](../app/src/main/java/com/courseflow/ui/EmploiDuTempsPane.java) :
   grille des 7 jours, créer/modifier/supprimer un créneau via une boîte de dialogue, rendu coloré
   par cours. Un créneau peut être glissé/redimensionné à la souris ou déplacé/ouvert/supprimé au
-  clavier. La largeur des colonnes s'adapte à la largeur de la fenêtre. Testé manuellement.
+  clavier. La largeur des colonnes s'adapte à la largeur de la fenêtre. Création de créneau et
+  undo/redo couverts par
+  [EmploiDuTempsPaneTest](../app/src/test/java/com/courseflow/ui/EmploiDuTempsPaneTest.java)
+  (TestFX), le reste testé manuellement.
 - **Sélection de fichiers par créneau (UI)** ✅ — liste à cocher des fichiers du Cours associé
   (tout coché par défaut à la création), boutons "Tout cocher"/"Tout décocher", bouton
   "Ouvrir maintenant". Testé manuellement.

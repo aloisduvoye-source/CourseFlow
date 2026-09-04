@@ -1,8 +1,8 @@
 name: CI
 
-# Build + tests à chaque push et pull request, pour que les régressions (surtout sur `core`,
-# le seul module testé aujourd'hui) soient détectées avant la revue plutôt que par discipline
-# manuelle.
+# Build + tests à chaque push et pull request, pour que les régressions (sur `core` comme sur
+# les parcours critiques de `app` désormais couverts par TestFX) soient détectées avant la revue
+# plutôt que par discipline manuelle.
 on:
   push:
   pull_request:
@@ -21,5 +21,8 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Installer Xvfb (écran virtuel pour les tests TestFX de app)
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Compiler et tester
-        run: mvn -B verify
+        run: xvfb-run -a mvn -B verify

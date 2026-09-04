@@ -45,6 +45,14 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <!-- Pilote les panes JavaFX comme un utilisateur (clics, saisie clavier) pour tester
+                 les parcours critiques de l'UI, seul module non couvert jusqu'ici (voir doc/BILAN_ET_PISTES.md §8). -->
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>4.0.18</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -55,6 +63,16 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>${javafx.mainClass}</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- TestFX pilote l'Application JavaFX par réflexion pour l'initialiser/la
+                         nettoyer entre les tests ; sans cette ouverture, le nettoyage échoue avec
+                         une IllegalAccessException bruyante (mais sans faire échouer les tests). -->
+                    <argLine>--add-opens javafx.graphics/com.sun.javafx.application=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
         </plugins>
