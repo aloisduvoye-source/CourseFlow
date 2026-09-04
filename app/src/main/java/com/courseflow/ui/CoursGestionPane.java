@@ -1,5 +1,6 @@
 package com.courseflow.ui;
 
+import atlantafx.base.theme.Styles;
 import com.courseflow.io.OuvreurFichiers;
 import com.courseflow.model.Cours;
 import com.courseflow.model.DossierReference;
@@ -121,9 +122,6 @@ public class CoursGestionPane extends BorderPane {
 
     private ScrollPane construireDetails() {
         champNom.setPromptText("Nom du cours");
-        // TODO UX : aucune validation du nom de cours (vide autorisé, doublons autorisés).
-        // Prévenir visuellement (ex. bordure rouge + message) quand le nom est vide ou déjà
-        // utilisé par un autre cours.
         champNom.textProperty().addListener((obs, ancien, nouveau) -> mettreAJourNomEnMemoire(nouveau));
         champNom.focusedProperty().addListener((obs, avaitFocus, aFocus) -> {
             if (!aFocus) {
@@ -442,6 +440,22 @@ public class CoursGestionPane extends BorderPane {
         }
         selectionne.setNom(nouveauNom);
         listeCours.refresh();
+        actualiserValiditeNom(selectionne, nouveauNom);
+    }
+
+    /**
+     * Signale visuellement (bordure + tooltip, style AtlantaFX "danger") un nom de cours vide ou
+     * déjà utilisé par un autre cours, sans empêcher la saisie : le nom reste modifiable, seule
+     * l'apparence du champ change.
+     */
+    private void actualiserValiditeNom(Cours cours, String nom) {
+        boolean vide = nom == null || nom.isBlank();
+        boolean doublon = !vide && tousLesCours.stream()
+                .anyMatch(autre -> !autre.getId().equals(cours.getId())
+                        && autre.getNom() != null && autre.getNom().trim().equalsIgnoreCase(nom.trim()));
+        champNom.pseudoClassStateChanged(Styles.STATE_DANGER, vide || doublon);
+        champNom.setTooltip(vide ? new Tooltip("Le nom ne peut pas être vide")
+                : doublon ? new Tooltip("Un autre cours porte déjà ce nom") : null);
     }
 
     private void recolorerCoursSelectionne() {
