@@ -15,6 +15,22 @@ import java.util.stream.Collectors;
  */
 public class EmploiDuTemps {
 
+    /**
+     * Version courante du schéma sérialisé. À incrémenter chaque fois qu'un changement de modèle
+     * nécessite une migration des données existantes (voir {@code MigrationSchema} dans le module
+     * persistence, qui enchaîne les étapes jusqu'à cette version).
+     */
+    public static final int VERSION_ACTUELLE = 1;
+
+    /**
+     * Une instance nouvellement construite (donnée fraîche, pas encore chargée depuis le disque)
+     * est par convention à la version courante. 0 désigne spécifiquement les données antérieures
+     * à l'introduction de ce champ (aucune clé "version" dans le JSON) ; c'est {@code DataStore}
+     * qui détecte ce cas à la lecture du fichier brut et force cette valeur avant migration, plutôt
+     * que de s'appuyer sur cette valeur par défaut (voir {@code DataStore#charger()}).
+     */
+    private int version = VERSION_ACTUELLE;
+
     private List<Cours> cours = new ArrayList<>();
     private List<Creneau> creneaux = new ArrayList<>();
     private Parametres parametres = new Parametres();
@@ -133,5 +149,13 @@ public class EmploiDuTemps {
 
     public void setParametres(Parametres parametres) {
         this.parametres = parametres;
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
+    public void setVersion(int version) {
+        this.version = version;
     }
 }

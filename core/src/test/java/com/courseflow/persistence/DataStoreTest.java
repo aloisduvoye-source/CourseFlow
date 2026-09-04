@@ -151,6 +151,35 @@ class DataStoreTest {
     }
 
     @Test
+    void chargerUnFichierSansChampVersionLeMigreVersLaVersionCourante(@TempDir Path repertoireTemp) throws IOException {
+        Path fichier = repertoireTemp.resolve("data.json");
+        Files.writeString(fichier, "{\"cours\":[],\"creneaux\":[]}");
+
+        EmploiDuTemps recharge = new DataStore(fichier).charger();
+
+        assertEquals(EmploiDuTemps.VERSION_ACTUELLE, recharge.getVersion());
+    }
+
+    @Test
+    void chargerSansFichierExistantRenvoieLaVersionCourante(@TempDir Path repertoireTemp) throws IOException {
+        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
+
+        EmploiDuTemps emploiDuTemps = dataStore.charger();
+
+        assertEquals(EmploiDuTemps.VERSION_ACTUELLE, emploiDuTemps.getVersion());
+    }
+
+    @Test
+    void sauvegarderPuisRechargerRestitueLaVersionCourante(@TempDir Path repertoireTemp) throws IOException {
+        DataStore dataStore = new DataStore(repertoireTemp.resolve("data.json"));
+
+        dataStore.sauvegarder(new EmploiDuTemps());
+        EmploiDuTemps recharge = dataStore.charger();
+
+        assertEquals(EmploiDuTemps.VERSION_ACTUELLE, recharge.getVersion());
+    }
+
+    @Test
     void sauvegarderFaitTournerUneCopieDeSecours(@TempDir Path repertoireTemp) throws IOException {
         Path fichier = repertoireTemp.resolve("data.json");
         DataStore dataStore = new DataStore(fichier);

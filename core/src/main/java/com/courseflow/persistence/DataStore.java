@@ -2,6 +2,7 @@ package com.courseflow.persistence;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -23,7 +24,10 @@ import java.time.format.DateTimeFormatter;
  * cours d'écriture ne laisse jamais un {@code data.json} tronqué, et chaque sauvegarde fait
  * tourner quelques copies horodatées ({@code data.json.bak1}..{@code bak3}). Un fichier présent
  * mais illisible est mis de côté plutôt qu'ignoré silencieusement (voir
- * {@link DonneesIllisiblesException}).
+ * {@link DonneesIllisiblesException}). Un fichier d'une version de schéma antérieure
+ * ({@link EmploiDuTemps#getVersion()}) est migré en mémoire à la lecture (voir
+ * {@link MigrationSchema}) ; la version courante n'est réécrite sur disque qu'à la prochaine
+ * {@link #sauvegarder(EmploiDuTemps)}.
  */
 public class DataStore {
 
@@ -68,7 +72,16 @@ public class DataStore {
             return new EmploiDuTemps();
         }
         try {
-            return mapper.readValue(fichierDonnees.toFile(), EmploiDuTemps.class);
+            JsonNode racine = mapper.readTree(fichierDonnees.toFile());
+            EmploiDuTemps emploiDuTemps = mapper.treeToValue(racine, EmploiDuTemps.class);
+            if (!racine.has("version")) {
+                // Fichier écrit avant l'introduction du champ : forcer la version 0 plutôt que de
+                // laisser la valeur par défaut de la classe (VERSION_ACTUELLE) masquer le fait
+                // qu'aucune migration n'a encore été appliquée à ces données.
+                emploiDuTemps.setVersion(0);
+            }
+            MigrationSchema.appliquer(emploiDuTemps);
+            return emploiDuTemps;
         } catch (JacksonException e) {
             Path quarantaine = fichierDonnees.resolveSibling(
                     fichierDonnees.getFileName() + ".corrompu-" + LocalDateTime.now().format(HORODATAGE));
