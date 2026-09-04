@@ -50,9 +50,6 @@ import java.util.stream.Collectors;
 public class AccueilPane extends BorderPane {
 
     private static final double TAILLE_VIGNETTE = 40;
-    // TODO UX (à valider avec l'utilisateur avant de changer) : largeur de colonne fixe,
-    // centrée. Sur un grand écran, l'espace disponible au-delà de cette largeur n'est pas
-    // utilisé. Vérifier si c'est un choix délibéré (lisibilité) avant de le remettre en cause.
     private static final double LARGEUR_COLONNE = 720;
     private static final int SEUIL_FICHIERS_REPLIES = 3;
     private static final DateTimeFormatter FORMAT_DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH);
