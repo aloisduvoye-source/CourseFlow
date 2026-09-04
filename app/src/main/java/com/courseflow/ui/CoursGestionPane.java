@@ -699,6 +699,7 @@ public class CoursGestionPane extends BorderPane {
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setAlignment(Pos.CENTER);
             boutonSupprimer.setTooltip(new Tooltip("Supprimer ce cours"));
+            boutonSupprimer.setAccessibleText("Supprimer ce cours");
             boutonSupprimer.setOnAction(e -> {
                 Cours cours = getItem();
                 if (cours != null) {
@@ -738,6 +739,7 @@ public class CoursGestionPane extends BorderPane {
         FichierCell() {
             boutonTags.setGraphic(Icons.tag());
             boutonTags.setTooltip(new Tooltip("Tags"));
+            boutonTags.setAccessibleText("Modifier les tags de ce fichier");
             boutonTags.setOnAction(e -> {
                 Fichier fichier = getItem();
                 if (fichier != null) {
@@ -748,6 +750,7 @@ public class CoursGestionPane extends BorderPane {
             boutonSupprimer.setGraphic(Icons.poubelle());
             boutonSupprimer.setAlignment(Pos.CENTER);
             boutonSupprimer.setTooltip(new Tooltip("Retirer ce fichier du cours"));
+            boutonSupprimer.setAccessibleText("Retirer ce fichier du cours");
             boutonSupprimer.setOnAction(e -> {
                 Fichier fichier = getItem();
                 if (fichier == null) {
@@ -877,6 +880,8 @@ public class CoursGestionPane extends BorderPane {
                     + "-fx-padding: 0;");
             boutonSupprimerTag.setGraphic(Icons.poubelle());
             boutonSupprimerTag.setAlignment(Pos.CENTER);
+            boutonSupprimerTag.setTooltip(new Tooltip("Supprimer ce tag"));
+            boutonSupprimerTag.setAccessibleText("Supprimer ce tag");
             HBox.setHgrow(espaceur, Priority.ALWAYS);
             ligne.setAlignment(Pos.CENTER_LEFT);
 

@@ -117,7 +117,9 @@ public class AccueilPane extends BorderPane {
                 + " -fx-border-radius: 100; -fx-background-color: -color-bg-default;");
         bouton.setMinSize(44, 44);
         bouton.setPrefSize(44, 44);
-        bouton.setTooltip(new Tooltip(delta < 0 ? "Jour précédent" : "Jour suivant"));
+        String libelle = delta < 0 ? "Jour précédent" : "Jour suivant";
+        bouton.setTooltip(new Tooltip(libelle));
+        bouton.setAccessibleText(libelle);
         bouton.setOnAction(e -> naviguerJour(delta));
         HBox.setMargin(bouton, new Insets(0, 16, 0, 16));
         return bouton;
@@ -198,6 +200,7 @@ public class AccueilPane extends BorderPane {
         boutonEditer.setGraphic(Icons.crayon());
         boutonEditer.getStyleClass().add(Styles.FLAT);
         boutonEditer.setTooltip(new Tooltip("Modifier ce créneau dans l'emploi du temps"));
+        boutonEditer.setAccessibleText("Modifier ce créneau dans l'emploi du temps");
         boutonEditer.setOnAction(e -> {
             if (surDemandeEdition != null) {
                 surDemandeEdition.accept(creneau);
