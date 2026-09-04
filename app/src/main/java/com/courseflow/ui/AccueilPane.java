@@ -290,8 +290,6 @@ public class AccueilPane extends BorderPane {
         return ligne;
     }
 
-    // TODO UX/qualité : logique dupliquée avec EmploiDuTempsPane.iconePourFichier (règles
-    // légèrement différentes). Factoriser dans une classe utilitaire partagée.
     private Node iconeFichier(String chemin) {
         if (chemin == null) {
             return Icons.document();
@@ -300,16 +298,7 @@ public class AccueilPane extends BorderPane {
             Optional<StackPane> vignette = construireVignette(chemin);
             return vignette.isPresent() ? vignette.get() : Icons.document();
         }
-        if (TypeFichier.estDocumentTexte(chemin)) {
-            return Icons.crayon();
-        }
-        if (TypeFichier.estPresentation(chemin)) {
-            return Icons.graphique();
-        }
-        if (OuvreurFichiers.estUrl(chemin)) {
-            return Icons.lien();
-        }
-        return Icons.document();
+        return IconesFichier.parType(chemin);
     }
 
     private Optional<StackPane> construireVignette(String chemin) {

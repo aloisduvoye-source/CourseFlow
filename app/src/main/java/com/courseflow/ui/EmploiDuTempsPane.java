@@ -19,7 +19,6 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
-import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -259,29 +258,6 @@ public class EmploiDuTempsPane extends BorderPane {
         Region region = new Region();
         HBox.setHgrow(region, Priority.ALWAYS);
         return region;
-    }
-
-    /**
-     * Icône de type de fichier pour une ligne de la liste du dialogue de créneau : simple
-     * indication visuelle par extension (pas d'aperçu image ici, contrairement à l'Accueil,
-     * pour rester compact dans cette liste filtrable).
-     */
-    // TODO UX/qualité : logique dupliquée avec AccueilPane.iconeFichier (règles légèrement
-    // différentes, pas de vignette image ici). Factoriser dans une classe utilitaire partagée.
-    private static Node iconePourFichier(String chemin) {
-        if (chemin == null) {
-            return Icons.document();
-        }
-        if (TypeFichier.estDocumentTexte(chemin)) {
-            return Icons.crayon();
-        }
-        if (TypeFichier.estPresentation(chemin)) {
-            return Icons.graphique();
-        }
-        if (OuvreurFichiers.estUrl(chemin)) {
-            return Icons.lien();
-        }
-        return Icons.document();
     }
 
     /**
@@ -797,7 +773,7 @@ public class EmploiDuTempsPane extends BorderPane {
                 libelleExtension.setManaged(extension != null);
                 libelleExtension.setVisible(extension != null);
 
-                ligneCellule.getChildren().set(1, iconePourFichier(fichier.getChemin()));
+                ligneCellule.getChildren().set(1, IconesFichier.parType(fichier.getChemin()));
                 setGraphic(ligneCellule);
             }
         });
