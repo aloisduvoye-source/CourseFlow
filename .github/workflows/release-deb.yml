@@ -1,0 +1,41 @@
+name: Build .deb pour une release
+
+# Se déclenche à la publication d'une release dont le tag commence par "v" (ex. v1.2.3).
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer un JDK complet (jlink/jpackage)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Installer fakeroot (requis par jpackage pour produire un .deb)
+        run: sudo apt-get update && sudo apt-get install -y fakeroot
+
+      - name: Construire le paquet .deb
+        run: |
+          # Le tag "v1.2.3" donne la version de paquet "1.2.3"
+          # (jpackage/dpkg exigent une version commençant par un chiffre).
+          export COURSEFLOW_VERSION="${TAG_NAME#v}"
+          bin/build-installer
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        shell: bash
+
+      - name: Ajouter le .deb aux fichiers de la release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" target/dist/*.deb --clobber

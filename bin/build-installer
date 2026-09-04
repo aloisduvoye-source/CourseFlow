@@ -45,7 +45,7 @@ jlink \
     --no-man-pages \
     --compress zip-9
 
-VERSION="1.0.0"
+VERSION="${COURSEFLOW_VERSION:-1.0.0}"
 DESCRIPTION="Organise les fichiers de cours autour de l'emploi du temps"
 
 echo "==> Construction de l'app-image (jpackage)"
